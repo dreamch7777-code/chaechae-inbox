@@ -250,6 +250,7 @@ function render(){
   const groups = groupsNow();
   const list = groups[state.tab] || [];
   updateBadge(groups);
+  state._lastList = list;
   if (!list.find(c => c.id===state.sel)) state.sel = list[0] ? list[0].id : null;
   const sel = list.find(c => c.id===state.sel);
   const keepQ = state.q;
@@ -262,8 +263,20 @@ function render(){
   ${sel ? card(sel) : ''}
   <div class="bar"><button class="link" data-act="logout">토큰 다시 넣기</button></div></main>`;
 }
+const APP_VER = '20261007-2';
+setInterval(async () => { try { const r = await fetch('version.txt?'+Date.now(), {cache:'no-store'}); if (r.ok) { const v = (await r.text()).trim(); if (v && v !== APP_VER) location.reload(); } } catch(e){} }, 60000);
 const DEFAULT_AV = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="26" fill="#a9c9f5"/><circle cx="32" cy="25" r="10" fill="#e6f0fd"/><path d="M14 52c2-10 10-15 18-15s16 5 18 15z" fill="#e6f0fd"/></svg>');
 window.DEFAULT_AV = DEFAULT_AV;
+function goNext(id){
+  // 승인·제외하면 바로 다음 사람으로 넘어가기
+  const list = (groupsNow()[state.tab]||[]).filter(c => c.id !== id);
+  const all = (state._lastList||[]).map(c=>c.id); const pos = all.indexOf(id);
+  let next = null;
+  for (let k = pos+1; k < all.length; k++){ if (list.find(c=>c.id===all[k])) { next = all[k]; break; } }
+  if (!next && list.length) next = list[0].id;
+  state.sel = next; ls.set('cci_sel', next||''); render();
+  const cd=document.querySelector('.card'); if (cd) cd.scrollIntoView({behavior:'smooth',block:'start'});
+}
 function avatar(c){
   const src = state.avatars[c.id] || state.avatars[c.name] || c.avatar;
   return `<img class="av" src="${esc(src && /^data:image\/|^https:/.test(src) ? src : DEFAULT_AV)}" alt="" onerror="this.onerror=null;this.src=DEFAULT_AV">`;
@@ -403,13 +416,13 @@ document.addEventListener('click', e => {
     if (hasBlank(msgs)){ toast('[ ] 빈칸을 먼저 채워 주세요'); return; }
     if (!msgs.length || hasBlank(msgs)) return;
     mutate(id, x => { x.draftMessages = msgs; x.status='approved'; x.approval={ id: rid(), messages: msgs, at: new Date().toISOString() }; }, `승인: ${c.name}`);
-    toast('승인했어요 — 바로 보내요 📤');
+    toast('승인했어요 — 바로 보내요 📤'); goNext(id);
   } else if (act==='unapprove'){
     mutate(id, x => { x.status='draft'; x.approval=null; }, `승인 취소: ${c.name}`); toast('승인 취소했어요');
   } else if (act==='skip'){
     mutate(id, x => { x.status='skipped'; }, `건너뛰기: ${c.name}`); toast('건너뛰었어요');
   } else if (act==='delete'){
-    mutate(id, x => { x.status='deleted'; }, `삭제: ${c.name}`); toast('제외했어요');
+    mutate(id, x => { x.status='deleted'; }, `삭제: ${c.name}`); toast('제외했어요'); goNext(id);
   } else if (act==='edit'){
     state.editing[id] = [...((c.draftMessages&&c.draftMessages.length)?c.draftMessages:[''])]; render();
   } else if (act==='addline'){
