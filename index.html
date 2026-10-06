@@ -168,7 +168,7 @@ function render(){
   <header><div class="top"><h1>채채 답장함</h1><div class="live"><span class="dot ${state.live==='on'?'on':state.live==='err'?'err':''}"></span>${state.live==='on'?'실시간':state.live==='err'?'연결 확인 중':'연결 중'}</div></div>
   <div class="tabs">${TABS.map(([k,l]) => `<button class="tab ${state.tab===k?'on':''}" data-tab="${k}">${l}<b>${groups[k].length}</b></button>`).join('')}</div></header>
   <main>${list.length ? list.map(card).join('') : `<div class="empty">비어 있어요 ✨</div>`}
-  ${state.tab==='sent' && list.length ? `<div class="bar"><button class="link" data-act="purge">보낸 것 모두 지우기</button></div>`:''}
+  ${state.tab==='sent' && list.length ? `<div class="bar"><button class="link" data-act="purge">보낸 것 모두 제외</button></div>`:''}
   <div class="bar"><button class="link" data-act="logout">토큰 다시 넣기</button></div></main>`;
 }
 function avatar(c){
@@ -196,10 +196,10 @@ function card(c){
     : draft.length ? `<div class="msgs">${draft.map(t=>`<div class="b draft">${esc(t)}</div>`).join('')}</div>` : '';
   let btns = '';
   if (editing) btns = `<div class="btns" style="grid-template-columns:1fr 1fr"><button class="btn pri" data-act="saveedit" data-id="${esc(c.id)}">저장</button><button class="btn" data-act="canceledit" data-id="${esc(c.id)}">취소</button></div>`;
-  else if (c.status==='approved' && s!=='sent' && s!=='sending') btns = `<div class="btns" style="grid-template-columns:1fr 1fr"><button class="btn" data-act="unapprove" data-id="${esc(c.id)}">승인 취소</button><button class="btn del" data-act="delete" data-id="${esc(c.id)}">삭제</button></div>`;
-  else if (bucket(c)==='sent') btns = `<div class="btns" style="grid-template-columns:1fr"><button class="btn del" data-act="delete" data-id="${esc(c.id)}">삭제</button></div>`;
-  else if (draft.length) btns = `<div class="btns"><button class="btn pri" data-act="approve" data-id="${esc(c.id)}" ${blank?'disabled':''}>승인</button><button class="btn" data-act="edit" data-id="${esc(c.id)}">고치기</button><button class="btn" data-act="skip" data-id="${esc(c.id)}">건너뛰기</button><button class="btn del" data-act="delete" data-id="${esc(c.id)}">삭제</button></div>${blank?'<div class="hint">[ ] 빈칸을 고치기에서 채워야 승인할 수 있어요</div>':''}`;
-  else btns = `<div class="btns" style="grid-template-columns:1fr 1fr 1fr"><button class="btn" data-act="edit" data-id="${esc(c.id)}">답장 쓰기</button><button class="btn" data-act="skip" data-id="${esc(c.id)}">확인함</button><button class="btn del" data-act="delete" data-id="${esc(c.id)}">삭제</button></div>`;
+  else if (c.status==='approved' && s!=='sent' && s!=='sending') btns = `<div class="btns" style="grid-template-columns:1fr 1fr"><button class="btn" data-act="unapprove" data-id="${esc(c.id)}">승인 취소</button><button class="btn del" data-act="delete" data-id="${esc(c.id)}">제외</button></div>`;
+  else if (bucket(c)==='sent') btns = `<div class="btns" style="grid-template-columns:1fr"><button class="btn del" data-act="delete" data-id="${esc(c.id)}">제외</button></div>`;
+  else if (draft.length) btns = `<div class="btns" style="grid-template-columns:1fr 1fr 1fr"><button class="btn pri" data-act="approve" data-id="${esc(c.id)}" ${blank?'disabled':''}>승인</button><button class="btn" data-act="edit" data-id="${esc(c.id)}">수정</button><button class="btn del" data-act="delete" data-id="${esc(c.id)}">제외</button></div>${blank?'<div class="hint">[ ] 빈칸을 수정에서 채워야 승인할 수 있어요</div>':''}`;
+  else btns = `<div class="btns" style="grid-template-columns:1fr 1fr"><button class="btn" data-act="edit" data-id="${esc(c.id)}">답장 쓰기</button><button class="btn del" data-act="delete" data-id="${esc(c.id)}">제외</button></div>`;
   return `<div class="card">
     <div class="head">${avatar(c)}<div><div class="name">${esc(c.name)}</div><div class="time">${esc(c.displayTime||'')}</div></div></div>
     ${reason?`<div class="reason">${esc(reason)}</div>`:''}
@@ -227,7 +227,7 @@ document.addEventListener('click', e => {
     const ids = state.chats.filter(x => bucket(x)==='sent').map(x=>x.id); if(!ids.length) return;
     ids.forEach(i => { const cc = state.chats.find(x=>x.id===i); if (cc) cc.status='deleted'; }); render();
     writing = writing.then(async () => { for (let k=0;k<5;k++){ await loadChats(true); state.chats.forEach(x => { if (ids.includes(x.id)) x.status='deleted'; }); const body = JSON.stringify({updatedAt:new Date().toISOString(),chats:state.chats},null,1); const r = await api('chats.json',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:'보낸 것 정리',content:b64enc(body),sha:state.sha})}); if(r.ok){state.etag=null;render();return;} await new Promise(r=>setTimeout(r,400)); } });
-    toast('보낸 것을 지웠어요'); return;
+    toast('보낸 것을 정리했어요'); return;
   }
   if (!c) return;
   if (act==='approve'){
@@ -240,7 +240,7 @@ document.addEventListener('click', e => {
   } else if (act==='skip'){
     mutate(id, x => { x.status='skipped'; }, `건너뛰기: ${c.name}`); toast('건너뛰었어요');
   } else if (act==='delete'){
-    mutate(id, x => { x.status='deleted'; }, `삭제: ${c.name}`); toast('삭제했어요');
+    mutate(id, x => { x.status='deleted'; }, `삭제: ${c.name}`); toast('제외했어요');
   } else if (act==='edit'){
     state.editing[id] = [...((c.draftMessages&&c.draftMessages.length)?c.draftMessages:[''])]; render();
   } else if (act==='addline'){
