@@ -51,6 +51,7 @@ main{max-width:640px;margin:0 auto;padding:12px 16px 80px}
 .summary{margin:12px 0 4px;color:var(--sub);font-size:15px;line-height:1.5}
 .msgs{display:flex;flex-direction:column;gap:6px;margin-top:10px}
 .b{max-width:80%;padding:10px 14px;border-radius:20px;font-size:15px;line-height:1.45;white-space:pre-wrap;word-break:break-word}
+.b a.lnk{color:#2563eb;text-decoration:underline;word-break:break-all}
 .b small{display:block;font-size:11px;color:var(--sub);margin-top:4px}
 .them{align-self:flex-start;background:var(--them);border-top-left-radius:6px}
 .me{align-self:flex-end;background:var(--meSoft);border-top-right-radius:6px}
@@ -263,10 +264,14 @@ function render(){
   ${sel ? card(sel) : ''}
   <div class="bar"><button class="link" data-act="logout">토큰 다시 넣기</button></div></main>`;
 }
-const APP_VER = '20261007-3';
+const APP_VER = '20261007-4';
 setInterval(async () => { try { const r = await fetch('version.txt?'+Date.now(), {cache:'no-store'}); if (r.ok) { const v = (await r.text()).trim(); if (v && v !== APP_VER) location.reload(); } } catch(e){} }, 60000);
 const DEFAULT_AV = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="26" fill="#a9c9f5"/><circle cx="32" cy="25" r="10" fill="#e6f0fd"/><path d="M14 52c2-10 10-15 18-15s16 5 18 15z" fill="#e6f0fd"/></svg>');
 window.DEFAULT_AV = DEFAULT_AV;
+function linkify(h){
+  // 대화 속 링크를 누를 수 있게 (새 창으로 열림)
+  return h.replace(/https?:\/\/[^\s<>"']+/g, u => { const clean = u.replace(/&amp;/g,'&'); return `<a href="${u}" target="_blank" rel="noopener noreferrer" class="lnk">${u}</a>`; });
+}
 function goNext(id){
   // 승인·제외하면 바로 다음 사람으로 넘어가기
   const list = (groupsNow()[state.tab]||[]).filter(c => c.id !== id);
@@ -286,7 +291,7 @@ function card(c){
   const editing = state.editing[c.id];
   const draft = (c.status==='approved' && c.approval) ? c.approval.messages : (c.draftMessages||[]);
   const blank = hasBlank(draft);
-  const bub = m => `<div class="b ${m.sender==='me'?'me':'them'}">${esc(m.text)}${m.time?`<small>${m.sender==='me'?'나 · ':''}${esc(m.time)}</small>`:''}</div>`;
+  const bub = m => `<div class="b ${m.sender==='me'?'me':'them'}">${linkify(esc(m.text))}${m.time?`<small>${m.sender==='me'?'나 · ':''}${esc(m.time)}</small>`:''}</div>`;
   const allM = (c.messages||[]); const recent = allM.slice(-6), older = allM.slice(-20, -6);
   const msgs = (older.length ? `<details><summary>이전 대화 ${older.length}개 더 보기</summary><div class="msgs" style="margin-top:8px">${older.map(bub).join('')}</div></details>` : '') + recent.map(bub).join('');
   const reason = c.checkReason || (c.category==='plus' ? (c.summary||'').replace(/^확인 필요:\s*/,'') : '') || (/톡클라우드 복원 필요/.test(c.summary||'') ? '🔄 톡클라우드 복원 필요 — 최신 대화가 더 있을 수 있어요' : '');
