@@ -6,7 +6,13 @@
 <meta name="robots" content="noindex,nofollow">
 <meta name="theme-color" content="#fbf8f1">
 <title>채채 답장함</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='16' fill='%23fee500'/><text x='32' y='43' font-size='30' text-anchor='middle'>💬</text></svg>">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="채채 답장함">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="icon" href="icon-192.png">
 <style>
 :root{
   --bg:#fbf8f1;--card:#ffffff;--line:#ece6d9;--text:#2b2620;--sub:#8a8174;
@@ -29,7 +35,7 @@ h1{font-size:20px;margin:0}
 .dot.on{background:var(--ok)} .dot.err{background:var(--bad)}
 .tabs{display:flex;gap:6px;margin-top:10px;overflow-x:auto;scrollbar-width:none}
 .tabs::-webkit-scrollbar{display:none}
-.tab{border:0;background:var(--chip);color:var(--text);padding:8px 12px;border-radius:999px;font-size:14px;white-space:nowrap;cursor:pointer}
+.tab{border:0;background:var(--chip);color:var(--text);padding:8px 10px;border-radius:999px;font-size:13px;white-space:nowrap;cursor:pointer}
 .tab.on{background:var(--chipOn);color:var(--chipOnText)}
 .tab b{margin-left:4px;font-weight:600;opacity:.8}
 main{max-width:640px;margin:0 auto;padding:12px 16px 80px}
@@ -61,6 +67,28 @@ details{margin-top:10px} summary{cursor:pointer;color:var(--sub);font-size:14px}
 .setup{max-width:480px;margin:40px auto;padding:0 16px}
 .setup input{width:100%;padding:12px;border-radius:12px;border:1px solid var(--line);font-size:15px;background:var(--card);color:var(--text)}
 .setup .btn{width:100%;margin-top:10px}
+.dedit{outline:none;min-width:3em;cursor:text;-webkit-user-select:text;user-select:text}
+.dedit:focus{box-shadow:0 0 0 2px var(--accent) inset}
+.dedit:empty:before{content:'여기에 입력';color:#8a8174}
+.saveinfo{font-size:12px;color:var(--sub);text-align:right;margin-top:4px}
+.minirow{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.mini{border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:999px;padding:7px 12px;font-size:13px;cursor:pointer}
+.emo{margin-top:8px;border:1px solid var(--line);border-radius:16px;background:var(--bg);padding:10px}
+.ecats{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.ecat{border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:999px;padding:6px 11px;font-size:13px;cursor:pointer}
+.ecat.on{background:var(--chipOn);color:var(--chipOnText);border-color:var(--chipOn)}
+.egrid{display:flex;flex-wrap:wrap;gap:6px;max-height:280px;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.ei{border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:12px;padding:8px 10px;font-size:15px;cursor:pointer;white-space:nowrap}
+.ei:active{background:var(--meSoft)}
+.notif{border:0;background:var(--chip);color:var(--text);border-radius:999px;padding:6px 10px;font-size:12px;cursor:pointer}
+.subbar{display:flex;justify-content:flex-end;gap:8px;align-items:center;min-height:8px;margin:4px 0}
+.pickbox{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:12px;margin:8px 0 4px}
+.search{width:100%;border:1px solid var(--line);background:var(--bg);color:var(--text);border-radius:14px;padding:12px 14px;font-size:16px;outline:none;-webkit-appearance:none}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 8px;margin-top:10px;max-height:300px;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.pick{display:flex;justify-content:space-between;align-items:center;gap:6px;border:1px solid transparent;background:none;color:var(--text);border-radius:14px;padding:11px 10px;text-align:left;cursor:pointer;min-width:0}
+.pick.on{background:var(--meSoft);border-color:var(--me)}
+.pn{font-weight:700;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.ps{font-size:12px;color:var(--sub);flex:none}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--accent);color:var(--bg);padding:10px 16px;border-radius:999px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw}
 .toast.on{opacity:1}
 .bar{display:flex;justify-content:flex-end;margin-top:6px}
@@ -89,6 +117,9 @@ const rid = () => Math.random().toString(36).slice(2,10) + Date.now().toString(3
 function toast(t){ const el=$('#toast'); el.textContent=t; el.classList.add('on'); clearTimeout(toast._t); toast._t=setTimeout(()=>el.classList.remove('on'),2200); }
 const api = (path, opt={}) => fetch(`https://api.github.com/repos/${repo}/contents/${path}`, { cache:'no-store', ...opt, headers:{ 'Authorization':`Bearer ${token}`, 'Accept':'application/vnd.github+json', 'X-GitHub-Api-Version':'2022-11-28', ...(opt.headers||{}) } });
 
+const EMO = {"하트": ["♡", "♥︎", "ෆ", "˚ෆ", "ꕤ", "🤍", "🖤", "🤎", "💗", "💕", "💞", "💓", "💘", "❣︎", "♡⃛", "❤︎", "⸝⸝♡", "♡̷", "ෆ⃛", "♡ ˙ᵕ˙ ♡", "(˶ᵔ ᵕ ᵔ˶)♡", "(´ε｀ )♡", "( ˘ ³˘)♥︎", "(っ˘з(˘⌣˘ )♡", "♡(˃͈ દ ˂͈ ༶ )", "(灬º‿º灬)♡", "♡ᐝ⸝⸝", "(ღ˘⌣˘ღ)", "(◍•ᴗ•◍)❤︎", "ʚ♡ɞ", "ପ(๑•ᴗ•๑)ଓ ♡", "♡⃝", "(๑ᵔ⤙ᵔ๑)♡", "(つ≧▽≦)つ♡", "⸜(｡˃ ᵕ ˂ )⸝♡", "(*ˊᗜˋ*)♡", "ʕ•ᴥ•ʔ♡", "(｡•ᴗ-)✧♡", "(⑅˘͈ ᵕ ˘͈ )♡", "♡(*´∀｀*)人(*´∀｀*)♡", "*. ε(´•᎑•`)っ♡", "(՞. .՞)ꔫ˖♡", "♡՞⸝⸝. .⸝⸝՞"], "행복": ["◡̈", "♡ ◡̈", "(˶ᵔ ᵕ ᵔ˶)", "( ⌯'ᵕ'⌯)", "•ᴗ•ꕤ", "દᵕ̈૩", "꒰❛ ֊ ❛꒱", "( ᐢ ᵕ ᐢ )", "･｡ᐠ( ᐢ ᵕ ᐢ )ᐟ｡･", "⁎ᵕᴗᵕ⁎", "(｡•̀ᴗ-)✧", "(๑˃ᴗ˂)ﻭ", "(*ˊᵕˋ*)", "(´▽`ʃ♡ƪ)", "(≧▽≦)", "٩(ˊᗜˋ*)و", "(^▽^)", "ʕ•̀ω•́ʔ✧", "(*´꒳`*)", "(⁎˃ᴗ˂⁎)", "꒰ ˶• ༝ •˶꒱", "(〃ﾟ3ﾟ〃)", "(•‿•)", "(◕‿◕)", "(✿◠‿◠)", "(｡◕‿◕｡)", "( ˙꒳​˙ )", "₍՞ .  ̫ . ՞₎", "·̑ㅇ·̑", "( ᐢᢦᐢ )", "(*^ω^*)", "⸜(*ˊᵕˋ*)⸝", "ヾ(๑╹◡╹)ﾉ\"", "(❁´◡`❁)", "꒰ ͒⸝⸝ᴗ . ᴗ⸝⸝ ͒꒱", "₍՞ᵕ.ᵕ՞₎", "(˵ •̀ ᴗ - ˵ ) ✧", "( ˶ˆ꒳ˆ˵ )"], "웃음": ["ㅋㅋㅋ", "ㅎㅎ", "ㅋㅋ (˶˃ ᵕ ˂˶)", "(≧∇≦)", "(＾▽＾)", "(*≧ω≦)", "(ﾉ≧∀≦)ﾉ", "٩(^ᴗ^)۶", "(⌒▽⌒)", "(*´▽`*)", "(*≧▽≦)ﾉｼ", "o(≧▽≦)o", "(´∀｀)", "ヽ(・∀・)ﾉ", "(•̀ᴗ•́)و", "(✧∀✧)", "(ノ´ヮ`)ノ*: ･ﾟ", "(*´∀`)~♥", "( ´ ▽ ` )", "(ᗒᗨᗕ)", "ꉂ(˵˃ ᗜ ˂˵)", "ꉂꉂ(ᵔᗜᵔ*)", "(〃▽〃)", "( ⸝⸝´꒳`⸝⸝)"], "신남": ["٩(ˊᗜˋ*)و", "ヾ(≧▽≦*)o", "ʕ•̫͡•ʔ♬✧", "(੭˶> ᗜ <˶)੭", "⸜(｡˃ ᵕ ˂ )⸝", "(ﾉ◕ヮ◕)ﾉ*:･ﾟ✧", "\\(^o^)/", "o(*≧▽≦)ツ", "٩(◕‿◕)۶", "ᕕ( ᐛ )ᕗ", "(っ˘ω˘ς )", "✧*。٩(ˊᗜˋ*)و✧*。", "ヽ(*⌒▽⌒*)ﾉ", "(ノ^∇^)ノ", "⁽⁽٩(๑˃̶͈̀ ᗨ ˂̶͈́)۶⁾⁾", "☆*:.｡.o(≧▽≦)o.｡.:*☆", "(/^▽^)/", "ᕙ(•̀ᴗ•́)ᕗ", "⸜(*ˊᗜˋ*)⸝", "(੭ˊᵕˋ)੭*ଘ"], "부끄러움": ["⸝⸝", "(⸝⸝ᵕᴗᵕ⸝⸝)", "(⁄ ⁄•⁄ω⁄•⁄ ⁄)", "(*/ω＼*)", "(〃▽〃)", "(//▽//)", "(⸝⸝• ω •⸝⸝)", "(⸝⸝ ᷇࿀ ᷆⸝⸝)", "(｡>﹏<｡)", "(*ﾉ▽ﾉ)", "(/ω＼)", "(o^^o)", "( ˶ˆ ᗜ ˆ˵ )", "ʕ⸝⸝⸝ • ˕ • ‎⸝⸝⸝ ʔ", "ᐢ⁄•⁄ω⁄‹⁄ᐢ", "(⸝⸝⸝°_°⸝⸝⸝)", "(*´﹃｀*)", "(⸝⸝ᐡ ᐧ ﻌ ᐧ ᐡ⸝⸝)", "꒰⸝⸝´ ꒳ ` ⸝⸝꒱", "(,,>﹏<,,)"], "슬픔": ["ㅠㅠ", "ㅜㅜ", "(｡•́︿•̀｡)", "(ᗒᗣᗕ)՞", "(。T ω T。)", "(╥﹏╥)", "(ಥ﹏ಥ)", "(T▽T)", "(ノД`)", "( ˃̣̣̥᷄⌓˂̣̣̥᷅ )", "(っ- ‸ – ς)", "(´；ω；`)", "( ´•̥̥̥ω•̥̥̥` )", "(｡ŏ﹏ŏ)", "(ᵕ̣̣̣̣̣̣﹏ᵕ̣̣̣̣̣̣)", "(ノ_<。)", "(つ﹏⊂)", "( ⸝⸝⸝ ̥ ̥ ̥ ⸝⸝⸝ )", "( ˘•̥ᴗ•̥˘ )", "( ´ ▿ ` )", "(ᐡ ᐧ ̫ ᐧ ᐡ)ㅠ", "૮꒰ ˶• ﻌ •˶꒱ა ㅠ", "(´;ω;｀)", "(ToT)"], "미안": ["미아내애 ㅠㅠ", "(人´∀`)ごめん", "(シ_ _)シ", "m(_ _)m", "(｡•́ - •̀｡)", "(_ _;)", "(´-ι_-｀)", "(ᵒ̴̶̷̥́ _ᵒ̴̶̷̣̥̀ )", "(⋟﹏⋞)", "(っ´ω`c)", "( ´•︵•` )", "(〃>_<;〃)", "(｡ŏ_ŏ)", "( ˘･з･)"], "화남": ["(｀へ´)", "( ･ั﹏･ั)", "(╬ Ò﹏Ó)", "(ꐦ°᷄д°᷅)", "(•̀へ•́ )", "ヽ(`Д´)ﾉ", "(≖_≖ )", "(눈_눈)", "(¬_¬)", "(╯°□°)╯︵ ┻━┻", "ಠ_ಠ", "(҂◡_◡)", "( `ε´ )", "(＃`Д´)", "ᕦ(ò_óˇ)ᕤ", "(งಠ_ಠ)ง", "(ꐦ ´͈ ᗨ `͈ )", "(-᷅_-᷄ )", "(｀ε´)", "(╬ಠ益ಠ)"], "삐짐": ["(｀ε´)", "( ･᷄ὢ･᷅ )", "(￣^￣)", "(`ー´)", "( ¯ε¯ )", "(ーー゛)", "( ˘･з･)", "(〃｀3′〃)", "(・ˋεˊ・)", "(ᵕ̣̣̣̣̣̣˘)", "( ⸝⸝¯ ‸ ¯⸝⸝ )", "(￣ε￣)", "(・へ・)", "(´-ε-｀)", "(*｀へ´*)", "(¬､¬)"], "놀람": ["(⊙_⊙)", "(°o°)", "Σ(°△°", ")", "(O_O)", "(ﾟДﾟ;)", "w(°ｏ°)w", "(◎_◎;)", "(⊙ω⊙)", "(*゜ロ゜)", "∑(O_O;)", "(ʘᗩʘ')", "Σ(っ °Д °;)っ", "(；ﾟдﾟ)", "(・□・;)", "!!(⊙ω⊙)!!", "(゜ロ゜)", "(꒪ȏ꒪)", "ㄴㅇㄱ", "헐 (⊙_⊙)", "(๑°⌓°๑)"], "졸림": ["( ˘ω˘ )zZ", "(-_-)zzz", "(∪｡∪)｡｡｡zzZ", "(_ _).｡o○", "( ᐡ- ﻌ •ᐡ )zZ", "(｡-ω-)zzz", "(˘ᵕ˘) zZ", "(￣o￣) zzZZ", "ᶻ 𝗓 𐰁", "(´〜｀*) zzz", "(っ˘ω˘ς )", "ᐡ˘ᴗ˘ᐡ zz", "(´-ω-`)", "( ु⁎ᴗ_ᴗ⁎)ु.｡oO", "(*_ _)zZZ", "(-.-)Zzz…"], "응원": ["ᕙ(•̀ᴗ•́)ᕗ", "(ง •̀_•́)ง", "٩(ˊᗜˋ*)و ﾌｧｲﾄ", "ψ(｀∇´)ψ", "(๑•̀ㅂ•́)و✧", "( •̀ ω •́ )✧", "(ง'̀-'́)ง", "ᕦ(ò_óˇ)ᕤ", "(☞ﾟヮﾟ)☞", "٩( ᐛ )و", "(•̀ᴗ•́)و ̑̑", "ファイト٩(๑•̀ω•́๑)۶", "♪(^∇^*)", "☆⌒ヽ(*'､^*)", "화이팅 (ง •̀_•́)ง", "(੭ु´ ᐜ `)੭ु⁾⁾", "ฅ^•ﻌ•^ฅ 화이팅", "(｀・ω・´)ゞ"], "최고": ["b(￣▽￣)d", "(๑•̀ㅂ•́)و✧", "( ´ ꒳ ` )b", "d(・∀・)b", "(•̀ᴗ•́)b", "👍(˶ᵔ ᵕ ᵔ˶)", "(*•̀ᴗ•́*)و ̑̑", "ദ്ദി ˉ͈̀꒳ˉ͈́ )✧", "ദ്ദി(˵ •̀ ᴗ - ˵ ) ✧", "ദ്ദി ( ᐛ )", "(ง ˙o˙)ว", "( ˙꒳​˙ )b"], "부탁": ["(人´∀`)", "(っ˘̩╭╮˘̩)っ", "(｡•́︿•̀｡)人", "( ˘͈ ᵕ ˘͈♡)", "(╯︵╰,)", "(*人*)", "(❁´▽`❁)人", "ʕ ˵• ₒ •˵ ʔ", "૮ ˶ᵔ ᵕ ᵔ˶ ა 제발", "(ᐡ•͈ ·̫ •͈ᐡ)", "( ´͈ ᵕ `͈ )", "(つ✧ω✧)つ", "(っ◞‸◟c)"], "인사": ["(*・ω・)ﾉ", "ヾ(＾∇＾)", "(^_^)/", "(｡･∀･)ﾉﾞ", "( ´ ▽ ` )ﾉ", "ヾ(•ω•`)o", "(っ˘▽˘)っ", "( ˙▿˙ )ノ", "ʕ •ᴥ•ʔ/", "(*^▽^*)ゞ", "안뇽 (ˊ•͈ ◡ •͈ˋ)", "(ᐢ ᵕ ᐢ)/", "(≧▽≦)/", "ヾ( ˃ᴗ˂ )◞ • *✰", "(￣▽￣)ノ", "( ・ω・)ノ", "(*´∀`)ﾉ", "( ´ ∀ `)ノ~ ♡", "( ◜‿◝ )/", "(๑˃̵ᴗ˂̵)/"], "윙크": ["(｡•̀ᴗ-)✧", "(^_−)☆", "(˵ •̀ ᴗ - ˵ ) ✧", "( ˘ ³˘)☆", "(〜￣▽￣)〜", "ᕕ( ･ᴗ･)ᕗ", "(*^_−)", "(｡•ㅅ•｡)~✧", "(^_<)〜☆", "(-ω･)ゞ", "(ゝ∀･)", "(*˘︶˘*).｡*♡"], "토끼": ["(˶ᵔ ᵕ ᵔ˶)", "ᐢ..ᐢ", "(ᐢ. .ᐢ)", "ᐢ•ᴗ•ᐢ", "ᐢ˶•ﻌ•˶ᐢ", "∩ ∩", "(ᐢ ᵕ ᐢ)", "(ᐢ‸ᐢ)", "ᐢ⑅•ᴥ•⑅ᐢ", "૮ ˙Ⱉ˙ ა", "(\\_/)", "(•ㅅ•)", "(=^･ｪ･^=))ﾉ彡☆", "(•ᴗ•)ᐢ", "ᐢ ᵕ ᐢ", "∩˶ᵔ ᵕ ᵔ˶∩", "( ᐢ. ̫ .ᐢ )", "(⑅ᐢ..ᐢ)", "꒰ᐢ. .ᐢ꒱", "꒰ᐢ⸝⸝• ༝ •⸝⸝ᐢ꒱", "ᐢ ̥ ̫ ̥ᐢ", "ᐢ- ̫-ᐢ", "(ᐢ. ̫.ᐢ)♡", "∩ ̫ ∩", "(ᐢ•ﻌ•ᐢ)づ", "૮₍ ˶•⤙•˶ ₎ა"], "곰": ["ʕ•ᴥ•ʔ", "ʕ ·ᴥ·ʔ", "ʕ•̀ω•́ʔ✧", "ʕ ᵔᴥᵔ ʔ", "ʕっ•ᴥ•ʔっ", "ʕ·͡ᴥ·ʔ", "ʕ´•ᴥ•`ʔ", "ʕ ꈍᴥꈍʔ", "ʕ ˵• ₒ •˵ ʔ", "ʕ ´•̥̥̥ ᴥ•̥̥̥`ʔ", "ʕ ◉ᴥ◉ ʔ", "ʕ•̫͡•ʔ", "ʕ⸝⸝ᴥ˶กʔ", "ʕ ⊃･ ◡ ･ ʔ⊃", "ʕ ˶ᵔ ᵕ ᵔ˶ ʔ♡", "ʕ•ᴥ•ʔﾉ♡", "ʕ ●ᴥ●ʔ", "ʕ ˘ᴥ˘ ʔ zZ"], "고양이": ["ฅ^•ﻌ•^ฅ", "(=^･ω･^=)", "(^・ω・^ )", "ฅ(^◕ᴥ◕^)ฅ", "(=①ω①=)", "/ᐠ｡ꞈ｡ᐟ\\", "/ᐠ - ˕ -マ", "(=ↀωↀ=)", "=^..^=", "(ﾐゝω･ﾐ)", "(ﾐ^ω^ﾐ)", "ᓚᘏᗢ", "ฅ(•ㅅ•❀)ฅ", "(=ʘᆽʘ=)∫", "/ᐠ ̥ ̮ ̥ ᐟ\\ฅ", "ฅ՞•ﻌ•՞ฅ", "₍ᐢ•ﻌ•ᐢ₎", "ᓚ₍ ^. .^₎", "(ↀДↀ)", "=＾● ⋏ ●＾="], "강아지": ["૮ ˶ᵔ ᵕ ᵔ˶ ა", "૮ ・ﻌ・ა", "૮₍ ˃ ⤙ ˂ ₎ა", "૮꒰ ˶• ༝ •˶꒱ა", "U•ᴥ•U", "(❍ᴥ❍ʋ)", "∪･ω･∪", "૮ ´• ﻌ ´• ა", "૮ ˙ﻌ˙ ა", "૮(˶╥︿╥)ა", "૮ฅ・ﻌ・აฅ", "૮ ⚆ﻌ⚆ა", "(ᐡ ᐧ ﻌ ᐧ ᐡ)", "ᐡ ᐧ ﻌ ᐧ ᐡ", "૮꒰ ´͈ ᗜ `͈ ꒱ა♡", "૮₍ ˶ᵔ ᵕ ᵔ˶ ₎ა", "૮ ・ﻌ・ა♡", "U^ェ^U"], "돼지·오리·새": ["(´・(oo)・｀)", "( ˘ ³˘)", "(^(oo)^)", "ʚ(｡˃ ᵕ ˂ )ɞ", "(・θ・)", "( ˙ϖ˙ )", "(‘◉⌓◉’)", ">゜)))彡", "(º ⌓ º)", "<(￣︶￣)>", "𓅿", "ε=ε=(ノ≧∇≦)ノ", "ᐠ( ᐛ )ᐟ", "(・ε・)", "(゜◇゜)", "ɞ˚‧。⋆"], "먹기": ["(っ˘ڡ˘ς)", "( ˘▽˘)っ♨", "(*´ڡ`●)", "ヾ(*´∀｀*)ﾉ🍰", "(ﾉ´ヮ`)ﾉ🍓", "( ˶ˆ꒳ˆ˵ )🍪", "(˶ᵔ ᵕ ᵔ˶)🍰", "( っ˘ω˘ς)🍜", "(〃´∀｀)🍡", "( ´ ▽ ` )🍦", "ʕ•̀ω•́ʔ🍯", "(・∀・)🍙", "(っ´▽｀)っ🍩", "( ˘ ³˘)☕", "( •́ ̯•̀ )🍕", "냠냠 (っ˘ڡ˘ς)"], "반짝·꾸밈": ["✧", "✩", "⋆", "˚", "₊˚⊹", "⋆˙⟡", "✦", "✧˖°", "°˖✧", "⊹", "⁺‧₊˚", ".ᐟ", ".ᐟ.ᐟ", "⸝⸝", "⸜⸝", "꙳", "˖⁺‧₊", "☆彡", "✿", "❀", "❁", "ꕤ", "✾", "♪", "♬", "☁︎", "☾", "⋆｡°✩", "✩°｡⋆", "𖤐", "⟡", "❉", "ᐝ", "⑅", "·͜·", "◡̈", "☺︎", "♥︎", "⁎", "✰", "★彡", "ʚɞ", "ᰔ", "ꔫ", "ꕀ", "𓂃", "⋆.ೃ࿔*:･", "*･゜ﾟ･*", ":･ﾟ✧"], "기타": ["¯\\_(ツ)_/¯", "(・_・;)", "(￣～￣;)", "(ー_ー)!!", "( ・ั﹏・ั)", "(・・?)", "(◔_◔)", "(⊙.☉)7", "(´･_･`)", "(￢‿￢ )", "(¬‿¬)", "( ˙▿˙ )", "(•_•)", "( ・∀・)・・・", "(・ω・)", "(´-`).｡oO", "( ̄ー ̄)", "(｀・ω・´)", "┐(￣ヘ￣)┌", "ᕕ( ᐛ )ᕗ"]};
+const EMO_CATS = Object.keys(EMO);
+state.emoOpen = {}; state.emoCat = ls.get('cci_emocat') || EMO_CATS[0]; state.saveInfo = {}; state.renderPending = false;
 // ---------- load ----------
 async function loadChats(force){
   const h = {}; if (state.etag && !force) h['If-None-Match'] = state.etag;
@@ -157,18 +188,46 @@ function bucket(c){
 
 // ---------- render ----------
 const TABS = [['reply','답장할 것'],['check','확인 필요'],['inquiry','예약·문의'],['sent','보낸 것']];
-function render(){
-  if (!token) return renderSetup();
+state.q = ''; state.sel = ls.get('cci_sel') || null;
+function groupsNow(){
   const groups = { reply:[], check:[], inquiry:[], sent:[] };
   for (const c of state.chats){ const b = bucket(c); if (b) groups[b].push(c); }
   const byTime = (a,b) => String(b.sortKey||b.updatedAt||'').localeCompare(String(a.sortKey||a.updatedAt||''));
   Object.values(groups).forEach(g => g.sort(byTime));
+  return groups;
+}
+function stLabel(c){
+  const s = sendState(c);
+  if (c.status==='approved') return s==='sent'?'보냄':s==='failed'?'못 보냄':'발송 중';
+  if (c.status==='skipped') return '건너뜀';
+  if (bucket(c)==='check') return '확인 필요';
+  if (bucket(c)==='inquiry') return (c.draftMessages||[]).length ? '답장 대기' : '업체 답 대기';
+  return (c.draftMessages||[]).length ? '답장 대기' : '읽기만';
+}
+function editingNow(){ const a=document.activeElement; return !!(a && a.dataset && a.dataset.ed) || Object.keys(saveTimers).length>0; }
+function gridHtml(list){
+  const q = state.q.trim().toLowerCase();
+  const shown = q ? list.filter(c => String(c.name||'').toLowerCase().includes(q)) : list;
+  if (!shown.length) return `<div class="empty" style="padding:24px 0">${q?'검색 결과가 없어요':'비어 있어요 ✨'}</div>`;
+  return shown.map(c => `<button class="pick ${c.id===state.sel?'on':''}" data-pick="${esc(c.id)}"><span class="pn">${esc(c.name)}</span><span class="ps">${esc(stLabel(c))}</span></button>`).join('');
+}
+function render(){
+  if (!token) return renderSetup();
+  if (editingNow()){ state.renderPending = true; return; }
+  state.renderPending = false;
+  const groups = groupsNow();
   const list = groups[state.tab] || [];
+  updateBadge(groups);
+  if (!list.find(c => c.id===state.sel)) state.sel = list[0] ? list[0].id : null;
+  const sel = list.find(c => c.id===state.sel);
+  const keepQ = state.q;
   $('#app').innerHTML = `
   <header><div class="top"><h1>채채 답장함</h1><div class="live"><span class="dot ${state.live==='on'?'on':state.live==='err'?'err':''}"></span>${state.live==='on'?'실시간':state.live==='err'?'연결 확인 중':'연결 중'}</div></div>
   <div class="tabs">${TABS.map(([k,l]) => `<button class="tab ${state.tab===k?'on':''}" data-tab="${k}">${l}<b>${groups[k].length}</b></button>`).join('')}</div></header>
-  <main>${list.length ? list.map(card).join('') : `<div class="empty">비어 있어요 ✨</div>`}
-  ${state.tab==='sent' && list.length ? `<div class="bar"><button class="link" data-act="purge">보낸 것 모두 제외</button></div>`:''}
+  <main>
+  <div class="subbar">${notifBtn()}${state.tab==='sent' && list.length ? `<button class="link" data-act="purge">보낸 것 모두 제외</button>`:''}</div>
+  <div class="pickbox"><input id="q" class="search" type="search" placeholder="이름 검색" value="${esc(keepQ)}" autocomplete="off"><div class="grid" id="grid">${gridHtml(list)}</div></div>
+  ${sel ? card(sel) : ''}
   <div class="bar"><button class="link" data-act="logout">토큰 다시 넣기</button></div></main>`;
 }
 function avatar(c){
@@ -191,15 +250,18 @@ function card(c){
       : s==='failed' ? `<span class="st fail">⚠️ 못 보냄: ${esc(state.sent[c.approval.id].reason||'')}</span>`
       : `<span class="st wait">⏳ 발송 대기 (PC가 곧 보내요)</span>`;
   } else if (c.status==='skipped') status = `<span class="st">건너뜀${c.skipMemo?': '+esc(c.skipMemo):''}</span>`;
-  const draftHtml = editing
-    ? `<div class="edit">${(editing).map((t,i)=>`<textarea data-ed="${esc(c.id)}" data-i="${i}">${esc(t)}</textarea>`).join('')}<button class="link" data-act="addline" data-id="${esc(c.id)}">+ 말풍선 추가</button></div>`
-    : draft.length ? `<div class="msgs">${draft.map(t=>`<div class="b draft">${esc(t)}</div>`).join('')}</div>` : '';
+  const editable = c.status!=='approved' && bucket(c)!=='sent';
+  const lines = draft.length ? draft : (editable ? [''] : []);
+  const draftHtml = !lines.length ? '' : (editable
+    ? `<div class="msgs" data-dl="${esc(c.id)}">${lines.map((t,i)=>`<div class="b draft dedit" contenteditable="true" data-ed="${esc(c.id)}" data-i="${i}">${esc(t)}</div>`).join('')}</div>
+       <div class="saveinfo" data-si="${esc(c.id)}">${esc(state.saveInfo[c.id]||'말풍선을 누르면 바로 고칠 수 있어요 · 자동 저장')}</div>
+       <div class="minirow"><button class="mini" data-act="addline" data-id="${esc(c.id)}">+ 말풍선</button><button class="mini" data-act="emotoggle" data-id="${esc(c.id)}">${state.emoOpen[c.id]?'특수 임티 접기 ♡':'특수 임티 열기 ♡'}</button></div>
+       ${state.emoOpen[c.id]?emoPicker(c.id):''}`
+    : `<div class="msgs">${lines.map(t=>`<div class="b draft">${esc(t)}</div>`).join('')}</div>`);
   let btns = '';
-  if (editing) btns = `<div class="btns" style="grid-template-columns:1fr 1fr"><button class="btn pri" data-act="saveedit" data-id="${esc(c.id)}">저장</button><button class="btn" data-act="canceledit" data-id="${esc(c.id)}">취소</button></div>`;
-  else if (c.status==='approved' && s!=='sent' && s!=='sending') btns = `<div class="btns" style="grid-template-columns:1fr 1fr"><button class="btn" data-act="unapprove" data-id="${esc(c.id)}">승인 취소</button><button class="btn del" data-act="delete" data-id="${esc(c.id)}">제외</button></div>`;
+  if (c.status==='approved' && s!=='sent' && s!=='sending') btns = `<div class="btns" style="grid-template-columns:1fr 1fr"><button class="btn" data-act="unapprove" data-id="${esc(c.id)}">승인 취소</button><button class="btn del" data-act="delete" data-id="${esc(c.id)}">제외</button></div>`;
   else if (bucket(c)==='sent') btns = `<div class="btns" style="grid-template-columns:1fr"><button class="btn del" data-act="delete" data-id="${esc(c.id)}">제외</button></div>`;
-  else if (draft.length) btns = `<div class="btns" style="grid-template-columns:1fr 1fr 1fr"><button class="btn pri" data-act="approve" data-id="${esc(c.id)}" ${blank?'disabled':''}>승인</button><button class="btn" data-act="edit" data-id="${esc(c.id)}">수정</button><button class="btn del" data-act="delete" data-id="${esc(c.id)}">제외</button></div>${blank?'<div class="hint">[ ] 빈칸을 수정에서 채워야 승인할 수 있어요</div>':''}`;
-  else btns = `<div class="btns" style="grid-template-columns:1fr 1fr"><button class="btn" data-act="edit" data-id="${esc(c.id)}">답장 쓰기</button><button class="btn del" data-act="delete" data-id="${esc(c.id)}">제외</button></div>`;
+  else btns = `<div class="btns" style="grid-template-columns:2fr 1fr"><button class="btn pri" data-act="approve" data-id="${esc(c.id)}">승인하고 발송</button><button class="btn del" data-act="delete" data-id="${esc(c.id)}">제외</button></div>${blank?'<div class="hint">[ ] 빈칸을 채워야 승인할 수 있어요 (말풍선을 눌러서 고치세요)</div>':''}`;
   return `<div class="card">
     <div class="head">${avatar(c)}<div><div class="name">${esc(c.name)}</div><div class="time">${esc(c.displayTime||'')}</div></div></div>
     ${reason?`<div class="reason">${esc(reason)}</div>`:''}
@@ -207,6 +269,66 @@ function card(c){
     ${msgs?`<div class="lbl">최근 대화</div><div class="msgs">${msgs}</div>`:''}
     ${(draftHtml)?`<div class="lbl">${c.status==='approved'?'승인한 답장':'보낼 답장'}</div>${draftHtml}`:''}
     ${status}${btns}</div>`;
+}
+function emoPicker(id){
+  return `<div class="emo" data-emo="${esc(id)}">${emoInner(id)}</div>`;
+}
+function emoInner(id){
+  const cat = EMO[state.emoCat] ? state.emoCat : EMO_CATS[0];
+  return `<div class="ecats">${EMO_CATS.map(k=>`<button class="ecat ${k===cat?'on':''}" data-act="emocat" data-id="${esc(id)}" data-cat="${esc(k)}">${esc(k)}</button>`).join('')}</div>
+  <div class="egrid">${EMO[cat].map((e,i)=>`<button class="ei" data-act="emo" data-id="${esc(id)}" data-cat="${esc(cat)}" data-k="${i}">${esc(e)}</button>`).join('')}</div>`;
+}
+// ---------- inline edit + autosave ----------
+const saveTimers = {}; const lastFocus = {};
+function bubblesOf(id){ return [...document.querySelectorAll(`.dedit[data-ed="${CSS.escape(id)}"]`)]; }
+function readLines(id){ return bubblesOf(id).map(el => el.innerText.replace(/ /g,' ').replace(/\n+$/,'').trim()).filter(Boolean); }
+function setInfo(id, t){ state.saveInfo[id]=t; const el=document.querySelector(`[data-si="${CSS.escape(id)}"]`); if (el) el.textContent=t; }
+function scheduleSave(id){
+  const n = readLines(id).join('').length; setInfo(id, `${n}자 · 저장 중…`);
+  clearTimeout(saveTimers[id]); saveTimers[id] = setTimeout(() => flushSave(id), 700);
+}
+function flushSave(id){
+  if (!(id in saveTimers)) return writing;
+  clearTimeout(saveTimers[id]); delete saveTimers[id];
+  const lines = readLines(id); const c = state.chats.find(x=>x.id===id); if (!c) return writing;
+  c.draftMessages = lines;
+  writing = writing.then(() => commit(id, x => { x.draftMessages = lines; if (x.status!=='approved') x.status='draft'; }, `고치기: ${c.name}`))
+    .then(() => setInfo(id, `${lines.join('').length}자 · 저장됨`))
+    .catch(e => { setInfo(id,'저장 실패 — 다시 고쳐 주세요'); console.error(e); })
+    .finally(() => { if (state.renderPending && !editingNow()) render(); });
+  return writing;
+}
+function insertEmo(id, text){
+  const a = document.activeElement;
+  let el = (a && a.dataset && a.dataset.ed===id) ? a : null;
+  if (el && document.queryCommandSupported && document.queryCommandSupported('insertText')) {
+    document.execCommand('insertText', false, text);
+  } else {
+    const list = bubblesOf(id); const idx = lastFocus[id] ?? (list.length-1);
+    el = list[idx] || list[list.length-1]; if (!el) return;
+    const cur = el.innerText.replace(/\n+$/,'');
+    el.textContent = cur ? (cur + ' ' + text) : text;
+  }
+  scheduleSave(id);
+}
+// ---------- badge & notifications ----------
+let seenDrafts = null;
+function pendingCount(groups){ return (groups.reply||[]).filter(c => c.status!=='approved' && (c.draftMessages||[]).length).length + (groups.inquiry||[]).filter(c => c.status!=='approved' && (c.draftMessages||[]).length).length; }
+function updateBadge(groups){
+  const n = pendingCount(groups);
+  try { if ('setAppBadge' in navigator){ n ? navigator.setAppBadge(n).catch(()=>{}) : navigator.clearAppBadge().catch(()=>{}); } } catch(e){}
+  const ids = new Set(state.chats.filter(c => c.status==='draft' && (c.draftMessages||[]).length).map(c => c.id + '|' + (c.updatedAt||'')));
+  if (seenDrafts){
+    const fresh = state.chats.filter(c => c.status==='draft' && (c.draftMessages||[]).length && !seenDrafts.has(c.id + '|' + (c.updatedAt||'')) && !state.saveInfo[c.id]);
+    if (fresh.length && typeof Notification!=='undefined' && Notification.permission==='granted' && navigator.serviceWorker){
+      navigator.serviceWorker.ready.then(r => r.showNotification('채채 답장함', { body: `새 답장 초안 ${fresh.length}개 · ${fresh.slice(0,3).map(c=>c.name).join(', ')}`, icon:'icon-192.png', badge:'icon-192.png', tag:'cci-new' })).catch(()=>{});
+    }
+  }
+  seenDrafts = ids;
+}
+function notifBtn(){
+  if (typeof Notification==='undefined' || Notification.permission!=='default') return '';
+  return `<button class="notif" data-act="notif">🔔 알림·배지 켜기</button>`;
 }
 function fmt(iso){ if(!iso) return ''; const d=new Date(iso); return `${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`; }
 function renderSetup(){
@@ -218,10 +340,19 @@ function renderSetup(){
 }
 
 // ---------- events ----------
+document.addEventListener('pointerdown', e => { if (e.target.closest('.ei,.ecat,[data-act="addline"]')) e.preventDefault(); });
+document.addEventListener('focusin', e => { const t=e.target; if (t.dataset && t.dataset.ed) lastFocus[t.dataset.ed] = +t.dataset.i; });
+document.addEventListener('focusout', e => { const t=e.target; if (t.dataset && t.dataset.ed){ const id=t.dataset.ed; setTimeout(() => { flushSave(id); if (state.renderPending && !editingNow()) render(); }, 50); } });
 document.addEventListener('click', e => {
+  const pk = e.target.closest('[data-pick]');
+  if (pk){ const prev = state.sel; if (prev) flushSave(prev); state.sel = pk.dataset.pick; ls.set('cci_sel', state.sel); render(); const cd=document.querySelector('.card'); if (cd) cd.scrollIntoView({behavior:'smooth',block:'start'}); return; }
   const t = e.target.closest('[data-tab],[data-act]'); if (!t) return;
-  if (t.dataset.tab){ state.tab = t.dataset.tab; ls.set('cci_tab', state.tab); render(); window.scrollTo(0,0); return; }
+  if (t.dataset.tab){ state.q=''; state.sel=null; state.tab = t.dataset.tab; ls.set('cci_tab', state.tab); render(); window.scrollTo(0,0); return; }
   const id = t.dataset.id, act = t.dataset.act, c = state.chats.find(x => x.id === id);
+  if (act==='notif'){ Notification.requestPermission().then(p => { toast(p==='granted'?'알림 켰어요 🔔':'알림이 꺼져 있어요'); render(); }); return; }
+  if (act==='emocat'){ state.emoCat = t.dataset.cat; ls.set('cci_emocat', state.emoCat); const box=document.querySelector(`[data-emo="${CSS.escape(id)}"]`); if (box) box.innerHTML = emoInner(id); return; }
+  if (act==='emo'){ const e2 = (EMO[t.dataset.cat]||[])[+t.dataset.k]; if (e2) insertEmo(id, e2); return; }
+  if (act==='emotoggle'){ state.emoOpen[id] = !state.emoOpen[id]; flushSave(id); const card=t.closest('.card'); const box=card && card.querySelector('.emo'); if (box) box.remove(); else t.closest('.minirow').insertAdjacentHTML('afterend', emoPicker(id)); t.textContent = state.emoOpen[id]?'특수 임티 접기 ♡':'특수 임티 열기 ♡'; return; }
   if (act==='logout'){ ls.del('cci_token'); token=''; render(); return; }
   if (act==='purge'){
     const ids = state.chats.filter(x => bucket(x)==='sent').map(x=>x.id); if(!ids.length) return;
@@ -231,10 +362,13 @@ document.addEventListener('click', e => {
   }
   if (!c) return;
   if (act==='approve'){
+    const domLines = bubblesOf(id).length ? readLines(id) : null;
+    if (domLines){ clearTimeout(saveTimers[id]); delete saveTimers[id]; c.draftMessages = domLines; }
     const msgs = (c.draftMessages||[]).map(s=>s.trim()).filter(Boolean);
+    if (hasBlank(msgs)){ toast('[ ] 빈칸을 먼저 채워 주세요'); return; }
     if (!msgs.length || hasBlank(msgs)) return;
-    mutate(id, x => { x.status='approved'; x.approval={ id: rid(), messages: msgs, at: new Date().toISOString() }; }, `승인: ${c.name}`);
-    toast('승인했어요 — PC가 바로 보내요 📤');
+    mutate(id, x => { x.draftMessages = msgs; x.status='approved'; x.approval={ id: rid(), messages: msgs, at: new Date().toISOString() }; }, `승인: ${c.name}`);
+    toast('승인했어요 — 바로 보내요 📤');
   } else if (act==='unapprove'){
     mutate(id, x => { x.status='draft'; x.approval=null; }, `승인 취소: ${c.name}`); toast('승인 취소했어요');
   } else if (act==='skip'){
@@ -244,7 +378,9 @@ document.addEventListener('click', e => {
   } else if (act==='edit'){
     state.editing[id] = [...((c.draftMessages&&c.draftMessages.length)?c.draftMessages:[''])]; render();
   } else if (act==='addline'){
-    state.editing[id].push(''); render();
+    const box = document.querySelector(`[data-dl="${CSS.escape(id)}"]`); if (!box) return;
+    const i = bubblesOf(id).length; box.insertAdjacentHTML('beforeend', `<div class="b draft dedit" contenteditable="true" data-ed="${esc(id)}" data-i="${i}"></div>`);
+    const nb = bubblesOf(id)[i]; nb && nb.focus();
   } else if (act==='canceledit'){
     delete state.editing[id]; render();
   } else if (act==='saveedit'){
@@ -253,7 +389,8 @@ document.addEventListener('click', e => {
     mutate(id, x => { x.draftMessages = lines; if (x.status!=='approved') x.status='draft'; }, `고치기: ${c.name}`); toast('저장했어요');
   }
 });
-document.addEventListener('input', e => { const t=e.target; if (t.dataset && t.dataset.ed){ const arr = state.editing[t.dataset.ed]; if (arr) arr[+t.dataset.i] = t.value; } });
+document.addEventListener('input', e => { const t=e.target; if (t.dataset && t.dataset.ed) scheduleSave(t.dataset.ed);
+  if (t.id==='q'){ state.q = t.value; const g = groupsNow(); const gr=document.getElementById('grid'); if (gr) gr.innerHTML = gridHtml(g[state.tab]||[]); } });
 
 // ---------- loop ----------
 let timer = null;
@@ -261,7 +398,7 @@ async function tick(){
   try {
     const a = await loadChats(false); const b = await loadSent();
     state.live='on'; state.lastOk=Date.now();
-    if ((a||b) && !Object.keys(state.editing).length) render(); else if (a||b) {/* keep editing UI */}
+    if (a||b) render();
     else if (state._wasErr) render();
     state._wasErr = false;
   } catch(e){
@@ -342,6 +479,7 @@ window.addEventListener('message', async (ev) => {
   } catch(e){ ev.source && ev.source.postMessage({ type:'cci-import-fail', error: String(e) }, ev.origin); }
 });
 if (window.opener) { try { window.opener.postMessage({ type:'cci-ready' }, OLD_ORIGIN); } catch(e){} }
+if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').catch(()=>{}); }
 start();
 })();
 </script>
