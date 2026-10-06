@@ -8,7 +8,7 @@
 <title>채채 답장함</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon2-180.png">
-<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Jua&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="채채 답장함">
@@ -16,36 +16,36 @@
 <link rel="icon" href="icon2-192.png">
 <style>
 :root{
-  --bg:#fff6f8;--card:#ffffff;--line:#f7dde5;--text:#3a2a30;--sub:#a0848d;
-  --them:#f8f0f3;--me:#ffe066;--meSoft:#fff3bf;--accent:#ff6f98;--ok:#3a9a63;--warn:#e07a3a;--bad:#d64561;
-  --chip:#ffe8ef;--chipOn:#ff7aa2;--chipOnText:#fff;--shadow:0 6px 18px rgba(255,111,152,.10);
+  --bg:#f6f6f8;--card:#ffffff;--line:#ececf0;--text:#1d1d1f;--sub:#8e8e93;
+  --them:#f2f2f5;--me:#fee500;--meSoft:#fff8c2;--accent:#3a1d1d;--ok:#1f9d55;--warn:#d9822b;--bad:#e5484d;
+  --chip:#ffffff;--chipOn:#3a1d1d;--chipOnText:#fee500;--shadow:0 2px 10px rgba(0,0,0,.05);
 }
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
-    --bg:#1d1619;--card:#271e22;--line:#3d2d33;--text:#f6e9ee;--sub:#c09aa7;
-    --them:#33272c;--me:#e8c33f;--meSoft:#4d3f1c;--accent:#ff8fb0;--chip:#3a2a31;--chipOn:#ff7aa2;--chipOnText:#fff;--shadow:none;
+    --bg:#121214;--card:#1c1c1f;--line:#2c2c30;--text:#f2f2f5;--sub:#9a9aa0;
+    --them:#2a2a2e;--me:#f5d90a;--meSoft:#4a4320;--accent:#fee500;--chip:#1c1c1f;--chipOn:#fee500;--chipOnText:#3a1d1d;--shadow:none;
   }
 }
 *{box-sizing:border-box}
-html,body{margin:0;background:var(--bg);color:var(--text);font-family:"Gowun Dodum",-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif;-webkit-text-size-adjust:100%}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif;-webkit-text-size-adjust:100%}
 header{position:sticky;top:0;z-index:5;background:var(--bg);padding:14px 16px 8px;border-bottom:1px solid var(--line)}
 .top{display:flex;align-items:center;justify-content:space-between;gap:8px}
-h1{font-family:"Jua",sans-serif;font-weight:400;font-size:24px;margin:0;color:var(--accent);letter-spacing:.5px}
-h1 .sp{color:#ffc93c;font-size:18px;margin-left:4px}
+h1{font-size:22px;font-weight:800;margin:0;color:var(--text);letter-spacing:-.4px;display:flex;align-items:center;gap:8px}
+h1 .sp{display:inline-flex;width:26px;height:26px;border-radius:9px;background:var(--me);align-items:center;justify-content:center;font-size:14px;color:#3a1d1d}
 .live{font-size:12px;color:var(--sub);display:flex;align-items:center;gap:6px}
 .dot{width:8px;height:8px;border-radius:50%;background:#bbb}
 .dot.on{background:var(--ok)} .dot.err{background:var(--bad)}
 .tabs{display:flex;gap:6px;margin-top:10px;overflow-x:auto;scrollbar-width:none}
 .tabs::-webkit-scrollbar{display:none}
-.tab{border:0;background:var(--chip);color:var(--text);padding:9px 14px;border-radius:999px;font-size:14px;white-space:nowrap;cursor:pointer;font-family:"Jua",sans-serif;font-weight:400;transition:transform .1s}
+.tab{border:0;background:var(--chip);color:var(--text);padding:9px 14px;border-radius:999px;font-size:14px;white-space:nowrap;cursor:pointer;font-weight:700;transition:transform .1s;border:1px solid var(--line)}
 .tab:active{transform:scale(.96)}
-.tab.on{background:var(--chipOn);color:var(--chipOnText);box-shadow:0 4px 12px rgba(255,111,152,.35)}
+.tab.on{background:var(--chipOn);color:var(--chipOnText);border-color:var(--chipOn)}
 .tab b{margin-left:4px;font-weight:600;opacity:.8}
 main{max-width:640px;margin:0 auto;padding:12px 16px 80px}
-.card{background:var(--card);border:1.5px solid var(--line);border-radius:26px;padding:18px;margin:14px 0;box-shadow:var(--shadow)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:18px;margin:14px 0;box-shadow:var(--shadow)}
 .head{display:flex;gap:12px;align-items:center}
-.av{width:52px;height:52px;border-radius:40%;border:2px solid var(--chip);background:var(--chip);flex:none;object-fit:cover;display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--sub)}
-.name{font-family:"Jua",sans-serif;font-weight:400;font-size:19px}
+.av{width:50px;height:50px;border-radius:38%;background:var(--chip);flex:none;object-fit:cover;display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--sub)}
+.name{font-weight:800;font-size:18px;letter-spacing:-.3px}
 .time{font-size:13px;color:var(--sub);margin-top:2px}
 .reason{margin-top:12px;padding:10px 12px;border-radius:12px;background:var(--meSoft);font-weight:700;font-size:14px}
 .summary{margin:12px 0 4px;color:var(--sub);font-size:15px;line-height:1.5}
@@ -58,8 +58,8 @@ main{max-width:640px;margin:0 auto;padding:12px 16px 80px}
 .draft{align-self:flex-end;background:var(--me);color:#2b2620;border-top-right-radius:6px}
 .edit textarea{width:100%;min-height:60px;border:1px solid var(--line);border-radius:12px;padding:10px;font:inherit;font-size:15px;background:var(--bg);color:var(--text);margin-bottom:6px}
 .btns{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:14px}
-.btn{border:1.5px solid var(--line);background:var(--card);color:var(--text);border-radius:18px;padding:12px 0;font-size:16px;cursor:pointer;font-family:"Jua",sans-serif;font-weight:400}
-.btn.pri{background:linear-gradient(135deg,#ffe066,#ffc94d);border-color:#ffd54f;color:#4a3410;box-shadow:0 4px 12px rgba(255,201,77,.4)}
+.btn{border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:16px;padding:13px 0;font-size:16px;cursor:pointer;font-weight:700}
+.btn.pri{background:var(--me);border-color:var(--me);color:#3a1d1d}
 .btn.del{color:var(--bad)}
 .btn:disabled{opacity:.45;cursor:not-allowed}
 .hint{font-size:13px;color:var(--warn);margin-top:8px}
@@ -255,7 +255,7 @@ function render(){
   const sel = list.find(c => c.id===state.sel);
   const keepQ = state.q;
   $('#app').innerHTML = `
-  <header><div class="top"><h1>채채 답장함<span class="sp">✧♡</span></h1><div class="live"><span class="dot ${state.live==='on'?'on':state.live==='err'?'err':''}"></span>${state.live==='on'?'실시간':state.live==='err'?'연결 확인 중':'연결 중'}</div></div>
+  <header><div class="top"><h1><span class="sp">💬</span>채채 답장함</h1><div class="live"><span class="dot ${state.live==='on'?'on':state.live==='err'?'err':''}"></span>${state.live==='on'?'실시간':state.live==='err'?'연결 확인 중':'연결 중'}</div></div>
   <div class="tabs">${TABS.map(([k,l]) => `<button class="tab ${state.tab===k?'on':''}" data-tab="${k}">${l}<b>${groups[k].length}</b></button>`).join('')}</div></header>
   <main>
   <div class="subbar">${notifBtn()}${state.tab==='sent' && list.length ? `<button class="link" data-act="purge">발송 모두 정리</button>`:''}</div>
@@ -263,7 +263,7 @@ function render(){
   ${sel ? card(sel) : ''}
   <div class="bar"><button class="link" data-act="logout">토큰 다시 넣기</button></div></main>`;
 }
-const APP_VER = '20261007-2';
+const APP_VER = '20261007-3';
 setInterval(async () => { try { const r = await fetch('version.txt?'+Date.now(), {cache:'no-store'}); if (r.ok) { const v = (await r.text()).trim(); if (v && v !== APP_VER) location.reload(); } } catch(e){} }, 60000);
 const DEFAULT_AV = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="26" fill="#a9c9f5"/><circle cx="32" cy="25" r="10" fill="#e6f0fd"/><path d="M14 52c2-10 10-15 18-15s16 5 18 15z" fill="#e6f0fd"/></svg>');
 window.DEFAULT_AV = DEFAULT_AV;
