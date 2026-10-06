@@ -276,6 +276,43 @@ async function start(){
   clearTimeout(timer); timer = setTimeout(tick, POLL_MS);
 }
 
+
+// ---------- Claude 운영용 도우미 (javascript로 호출) ----------
+function applyUpsert(list, card){
+  const i = list.findIndex(x => x.id === card.id || (!card.id && x.name === card.name) || (card.id && x.name === card.name && x.status!=='deleted'));
+  const now = new Date().toISOString();
+  if (i < 0){ list.push({ status:'draft', ...card, id: card.id || ('c'+rid()), createdAt: now, updatedAt: now, sortKey: card.sortKey || now }); return 'added'; }
+  const old = list[i];
+  if (old.status === 'approved' && old.approval && !(state.sent[old.approval.id] && state.sent[old.approval.id].state==='sent')) return 'locked';
+  const keepId = old.id;
+  list[i] = { ...old, ...card, id: keepId, updatedAt: now, sortKey: card.sortKey || now };
+  if (!('status' in card)) list[i].status = (card.draftMessages && card.draftMessages.length) || card.needsReply ? 'draft' : (old.status==='deleted'?'draft':old.status);
+  if (list[i].status !== 'approved') list[i].approval = null;
+  return 'updated';
+}
+async function commitAll(fn, msg){
+  for (let k=0;k<6;k++){
+    await loadChats(true); await loadSent();
+    const res = fn(state.chats);
+    const body = JSON.stringify({ updatedAt: new Date().toISOString(), chats: state.chats }, null, 1);
+    const r = await api('chats.json', { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ message: msg, content: b64enc(body), sha: state.sha }) });
+    if (r.ok){ state.etag=null; render(); return res; }
+    if (r.status!==409 && r.status!==422) throw new Error('put '+r.status);
+    await new Promise(z=>setTimeout(z, 400*(k+1)));
+  }
+  throw new Error('conflict');
+}
+window.CCI = {
+  ready: () => !!token,
+  list: async () => { await loadChats(true); await loadSent(); return state.chats.map(c => ({ id:c.id, name:c.name, status:c.status, category:c.category, sent: c.approval ? (state.sent[c.approval.id]||{}).state||'queued' : null, last: (c.messages||[]).slice(-1)[0] || null, draft: c.draftMessages||[] })); },
+  get: async (idOrName) => { await loadChats(true); return state.chats.find(c => c.id===idOrName || c.name===idOrName) || null; },
+  upsertMany: async (cards) => commitAll(list => cards.map(c => applyUpsert(list, c)), `Claude: 초안 ${cards.length}개`),
+  skip: async (idOrName, memo) => commitAll(list => { const c = list.find(x=>x.id===idOrName||x.name===idOrName); if(!c) return 'none'; if (c.status==='approved') return 'locked'; c.status='skipped'; c.skipMemo=memo||''; c.updatedAt=new Date().toISOString(); return 'ok'; }, `Claude: 정리 ${idOrName}`),
+  setAvatars: async (map) => { const g = await api('avatars.json'); let cur={}, sha; if (g.ok){ const j=await g.json(); sha=j.sha; cur=JSON.parse(b64dec(j.content)||'{}'); } const merged={...cur,...map}; const r = await api('avatars.json',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:'프사 갱신',content:b64enc(JSON.stringify(merged)),sha})}); state.avatars=merged; render(); return r.status; },
+  approvedQueue: async () => { await loadChats(true); await loadSent(); return state.chats.filter(c => c.status==='approved' && c.approval && !(state.sent[c.approval.id])).map(c => ({ id:c.id, name:c.name, approvalId:c.approval.id, messages:c.approval.messages })); },
+  markSent: async (approvalId, name, result, reason) => { const g = await api('sent.json'); let cur={}, sha; if (g.ok){ const j=await g.json(); sha=j.sha; cur=JSON.parse(b64dec(j.content)||'{}'); } cur[approvalId] = { state: result, name, at: new Date().toISOString(), reason: reason||'', device:'Claude' }; const r = await api('sent.json',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:'Claude 발송 기록: '+name,content:b64enc(JSON.stringify(cur)),sha})}); state.sentEtag=null; await loadSent(); render(); return r.status; }
+};
+
 // ---------- one-time import from old inbox (opener tab) ----------
 const OLD_ORIGIN = 'https://chaechae-private-inbox.dreamch7777.chatgpt.site';
 window.addEventListener('message', async (ev) => {
