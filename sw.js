@@ -12,7 +12,7 @@ self.addEventListener('notificationclick', e => {
 self.addEventListener('push', e => {
   let d = {}; try { d = e.data ? e.data.json() : {}; } catch(_) {}
   e.waitUntil(Promise.all([
-    self.registration.showNotification(d.title || '채채 답장함', { body: d.body || '새 답장 초안이 올라왔어요', icon:'icon-192.png', tag:'cci-new' }),
+    self.registration.showNotification(d.title || '채채 답장함', { body: d.body || '새 답장 초안이 올라왔어요', icon:'icon2-192.png', tag:'cci-new' }),
     (typeof d.count === 'number' && self.navigator && self.navigator.setAppBadge) ? self.navigator.setAppBadge(d.count) : Promise.resolve()
   ]));
 });

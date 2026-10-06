@@ -4,50 +4,53 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex,nofollow">
-<meta name="theme-color" content="#fbf8f1">
+<meta name="theme-color" content="#fff4f7">
 <title>채채 답장함</title>
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="apple-touch-icon" href="icon2-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Jua&display=swap" rel="stylesheet">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="채채 답장함">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<link rel="icon" href="icon-192.png">
+<link rel="icon" href="icon2-192.png">
 <style>
 :root{
-  --bg:#fbf8f1;--card:#ffffff;--line:#ece6d9;--text:#2b2620;--sub:#8a8174;
-  --them:#f2efe8;--me:#fee17a;--meSoft:#fff3c4;--accent:#3a2f1f;--ok:#2f8a4f;--warn:#c0602a;--bad:#b4373a;
-  --chip:#f4efe4;--chipOn:#2b2620;--chipOnText:#fff;
+  --bg:#fff6f8;--card:#ffffff;--line:#f7dde5;--text:#3a2a30;--sub:#a0848d;
+  --them:#f8f0f3;--me:#ffe066;--meSoft:#fff3bf;--accent:#ff6f98;--ok:#3a9a63;--warn:#e07a3a;--bad:#d64561;
+  --chip:#ffe8ef;--chipOn:#ff7aa2;--chipOnText:#fff;--shadow:0 6px 18px rgba(255,111,152,.10);
 }
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
-    --bg:#171512;--card:#211e1a;--line:#36312a;--text:#efe9df;--sub:#a59c8e;
-    --them:#2c2823;--me:#d9b440;--meSoft:#4a3f1f;--accent:#f3e6c5;--chip:#2c2823;--chipOn:#efe9df;--chipOnText:#171512;
+    --bg:#1d1619;--card:#271e22;--line:#3d2d33;--text:#f6e9ee;--sub:#c09aa7;
+    --them:#33272c;--me:#e8c33f;--meSoft:#4d3f1c;--accent:#ff8fb0;--chip:#3a2a31;--chipOn:#ff7aa2;--chipOnText:#fff;--shadow:none;
   }
 }
 *{box-sizing:border-box}
-html,body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif;-webkit-text-size-adjust:100%}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:"Gowun Dodum",-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif;-webkit-text-size-adjust:100%}
 header{position:sticky;top:0;z-index:5;background:var(--bg);padding:14px 16px 8px;border-bottom:1px solid var(--line)}
 .top{display:flex;align-items:center;justify-content:space-between;gap:8px}
-h1{font-size:20px;margin:0}
+h1{font-family:"Jua",sans-serif;font-weight:400;font-size:24px;margin:0;color:var(--accent);letter-spacing:.5px}
+h1 .sp{color:#ffc93c;font-size:18px;margin-left:4px}
 .live{font-size:12px;color:var(--sub);display:flex;align-items:center;gap:6px}
 .dot{width:8px;height:8px;border-radius:50%;background:#bbb}
 .dot.on{background:var(--ok)} .dot.err{background:var(--bad)}
 .tabs{display:flex;gap:6px;margin-top:10px;overflow-x:auto;scrollbar-width:none}
 .tabs::-webkit-scrollbar{display:none}
-.tab{border:0;background:var(--chip);color:var(--text);padding:8px 10px;border-radius:999px;font-size:13px;white-space:nowrap;cursor:pointer}
-.tab.on{background:var(--chipOn);color:var(--chipOnText)}
+.tab{border:0;background:var(--chip);color:var(--text);padding:9px 14px;border-radius:999px;font-size:14px;white-space:nowrap;cursor:pointer;font-family:"Jua",sans-serif;font-weight:400;transition:transform .1s}
+.tab:active{transform:scale(.96)}
+.tab.on{background:var(--chipOn);color:var(--chipOnText);box-shadow:0 4px 12px rgba(255,111,152,.35)}
 .tab b{margin-left:4px;font-weight:600;opacity:.8}
 main{max-width:640px;margin:0 auto;padding:12px 16px 80px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:16px;margin:12px 0}
+.card{background:var(--card);border:1.5px solid var(--line);border-radius:26px;padding:18px;margin:14px 0;box-shadow:var(--shadow)}
 .head{display:flex;gap:12px;align-items:center}
-.av{width:48px;height:48px;border-radius:50%;background:var(--chip);flex:none;object-fit:cover;display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--sub)}
-.name{font-weight:700;font-size:17px}
+.av{width:52px;height:52px;border-radius:40%;border:2px solid var(--chip);background:var(--chip);flex:none;object-fit:cover;display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--sub)}
+.name{font-family:"Jua",sans-serif;font-weight:400;font-size:19px}
 .time{font-size:13px;color:var(--sub);margin-top:2px}
 .reason{margin-top:12px;padding:10px 12px;border-radius:12px;background:var(--meSoft);font-weight:700;font-size:14px}
 .summary{margin:12px 0 4px;color:var(--sub);font-size:15px;line-height:1.5}
 .msgs{display:flex;flex-direction:column;gap:6px;margin-top:10px}
-.b{max-width:80%;padding:10px 13px;border-radius:16px;font-size:15px;line-height:1.45;white-space:pre-wrap;word-break:break-word}
+.b{max-width:80%;padding:10px 14px;border-radius:20px;font-size:15px;line-height:1.45;white-space:pre-wrap;word-break:break-word}
 .b small{display:block;font-size:11px;color:var(--sub);margin-top:4px}
 .them{align-self:flex-start;background:var(--them);border-top-left-radius:6px}
 .me{align-self:flex-end;background:var(--meSoft);border-top-right-radius:6px}
@@ -55,8 +58,8 @@ main{max-width:640px;margin:0 auto;padding:12px 16px 80px}
 .draft{align-self:flex-end;background:var(--me);color:#2b2620;border-top-right-radius:6px}
 .edit textarea{width:100%;min-height:60px;border:1px solid var(--line);border-radius:12px;padding:10px;font:inherit;font-size:15px;background:var(--bg);color:var(--text);margin-bottom:6px}
 .btns{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:14px}
-.btn{border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:14px;padding:11px 0;font-size:15px;cursor:pointer}
-.btn.pri{background:var(--me);border-color:var(--me);color:#2b2620;font-weight:700}
+.btn{border:1.5px solid var(--line);background:var(--card);color:var(--text);border-radius:18px;padding:12px 0;font-size:16px;cursor:pointer;font-family:"Jua",sans-serif;font-weight:400}
+.btn.pri{background:linear-gradient(135deg,#ffe066,#ffc94d);border-color:#ffd54f;color:#4a3410;box-shadow:0 4px 12px rgba(255,201,77,.4)}
 .btn.del{color:var(--bad)}
 .btn:disabled{opacity:.45;cursor:not-allowed}
 .hint{font-size:13px;color:var(--warn);margin-top:8px}
@@ -72,11 +75,14 @@ details{margin-top:10px} summary{cursor:pointer;color:var(--sub);font-size:14px}
 .dedit:empty:before{content:'여기에 입력';color:#8a8174}
 .saveinfo{font-size:12px;color:var(--sub);text-align:right;margin-top:4px}
 .minirow{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
-.mini{border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:999px;padding:7px 12px;font-size:13px;cursor:pointer}
+.mini{border:1.5px solid var(--line);background:var(--card);color:var(--text);border-radius:999px;padding:7px 13px;font-size:13px;cursor:pointer}
+.mini:active{background:var(--chip)}
 .emo{margin-top:8px;border:1px solid var(--line);border-radius:16px;background:var(--bg);padding:10px}
 .ecats{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
 .ecat{border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:999px;padding:6px 11px;font-size:13px;cursor:pointer}
 .ecat.on{background:var(--chipOn);color:var(--chipOnText);border-color:var(--chipOn)}
+.ecat.star{font-size:15px;color:#f5b400}
+.ecat.star.on{color:#fff}
 .egrid{display:flex;flex-wrap:wrap;gap:6px;max-height:280px;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .ei{border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:12px;padding:8px 10px;font-size:15px;cursor:pointer;white-space:nowrap}
 .ei:active{background:var(--meSoft)}
@@ -213,7 +219,7 @@ function bucket(c){
 }
 
 // ---------- render ----------
-const TABS = [['reply','답장할 것'],['check','확인 필요'],['inquiry','예약·문의'],['sent','보낸 것']];
+const TABS = [['reply','전체'],['check','확인 필요'],['inquiry','예약·문의'],['sent','발송']];
 state.q = ''; state.sel = ls.get('cci_sel') || null;
 function groupsNow(){
   const groups = { reply:[], check:[], inquiry:[], sent:[] };
@@ -248,17 +254,19 @@ function render(){
   const sel = list.find(c => c.id===state.sel);
   const keepQ = state.q;
   $('#app').innerHTML = `
-  <header><div class="top"><h1>채채 답장함</h1><div class="live"><span class="dot ${state.live==='on'?'on':state.live==='err'?'err':''}"></span>${state.live==='on'?'실시간':state.live==='err'?'연결 확인 중':'연결 중'}</div></div>
+  <header><div class="top"><h1>채채 답장함<span class="sp">✧♡</span></h1><div class="live"><span class="dot ${state.live==='on'?'on':state.live==='err'?'err':''}"></span>${state.live==='on'?'실시간':state.live==='err'?'연결 확인 중':'연결 중'}</div></div>
   <div class="tabs">${TABS.map(([k,l]) => `<button class="tab ${state.tab===k?'on':''}" data-tab="${k}">${l}<b>${groups[k].length}</b></button>`).join('')}</div></header>
   <main>
-  <div class="subbar">${notifBtn()}${state.tab==='sent' && list.length ? `<button class="link" data-act="purge">보낸 것 모두 제외</button>`:''}</div>
+  <div class="subbar">${notifBtn()}${state.tab==='sent' && list.length ? `<button class="link" data-act="purge">발송 모두 정리</button>`:''}</div>
   <div class="pickbox"><input id="q" class="search" type="search" placeholder="이름 검색" value="${esc(keepQ)}" autocomplete="off"><div class="grid" id="grid">${gridHtml(list)}</div></div>
   ${sel ? card(sel) : ''}
   <div class="bar"><button class="link" data-act="logout">토큰 다시 넣기</button></div></main>`;
 }
+const DEFAULT_AV = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="26" fill="#a9c9f5"/><circle cx="32" cy="25" r="10" fill="#e6f0fd"/><path d="M14 52c2-10 10-15 18-15s16 5 18 15z" fill="#e6f0fd"/></svg>');
+window.DEFAULT_AV = DEFAULT_AV;
 function avatar(c){
   const src = state.avatars[c.id] || state.avatars[c.name] || c.avatar;
-  return src ? `<img class="av" src="${esc(src)}" alt="">` : `<div class="av">${esc((c.name||'?').trim()[0]||'?')}</div>`;
+  return `<img class="av" src="${esc(src && /^data:image\/|^https:/.test(src) ? src : DEFAULT_AV)}" alt="" onerror="this.onerror=null;this.src=DEFAULT_AV">`;
 }
 function card(c){
   const s = sendState(c);
@@ -302,7 +310,7 @@ function emoPicker(id){
 function emoInner(id){
   const cat = (state.emoCat==='★' || EMO[state.emoCat]) ? state.emoCat : EMO_CATS[0];
   const items = cat==='★' ? recentEmos() : EMO[cat];
-  return `<div class="ecats">${EMO_CATS.map(k=>`<button class="ecat ${k===cat?'on':''}" data-act="emocat" data-id="${esc(id)}" data-cat="${esc(k)}">${esc(k)}</button>`).join('')}</div>
+  return `<div class="ecats">${EMO_CATS.map(k=>`<button class="ecat ${k===cat?'on':''} ${k==='★'?'star':''}" data-act="emocat" data-id="${esc(id)}" data-cat="${esc(k)}">${esc(k)}</button>`).join('')}</div>
   <div class="egrid">${items.length?items.map(e=>`<button class="ei" data-act="emo" data-id="${esc(id)}" data-e="${esc(e)}">${esc(e)}</button>`).join(''):'<span class="st">아직 쓴 특수 임티가 없어요</span>'}</div>`;
 }
 // ---------- inline edit + autosave ----------
