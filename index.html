@@ -96,6 +96,8 @@ details{margin-top:10px} summary{cursor:pointer;color:var(--sub);font-size:14px}
 .b.media small{display:block;margin-top:3px}
 .grow{display:flex;gap:8px;align-items:flex-start;align-self:flex-start;max-width:88%}
 .grow .b{max-width:100%}
+.gcol{display:flex;flex-direction:column;align-items:flex-start;min-width:0;max-width:100%}
+.gname{font-size:12px;color:#8a7f88;margin:0 0 3px 4px;font-weight:600}
 .mav{width:36px;height:36px;border-radius:14px;object-fit:cover;flex:none;background:#f3e6ee}
 .mav.sp{visibility:hidden}
 .who{font-size:12px;font-weight:800;color:var(--accent);margin-bottom:3px}
@@ -347,7 +349,7 @@ function render(){
   ${sel ? card(sel) : ''}`}
   <div class="bar"><button class="link" data-act="logout">토큰 다시 넣기</button></div></main>`;
 }
-const APP_VER = '20261007-24';
+const APP_VER = '20261008-01';
 // 새 버전이 올라오면 새로고침 없이 자동으로 바뀜 (캐시를 피해서 새 주소로 다시 열기, 고치는 중이면 끝날 때까지 기다림)
 async function checkVer(){ try { const r = await fetch('version.txt?'+Date.now(), {cache:'no-store'}); if (r.ok) { const v = (await r.text()).trim(); if (v && v !== APP_VER && !(typeof editingNow==='function' && editingNow())) { const u = new URL(location.href); u.searchParams.set('v', v); location.replace(u.toString()); } } } catch(e){} }
 setInterval(checkVer, 15000); document.addEventListener('visibilitychange', () => { if (!document.hidden) checkVer(); }); setTimeout(checkVer, 3000);
@@ -490,7 +492,7 @@ function card(c){
   const bub0 = (m, bare) => {
     const links = (m.text||'').match(/https?:\/\/[^\s<>"']+/g) || [];
     const chips = links.map(u => { let d=''; try { d = new URL(u).hostname.replace(/^www\./,''); } catch(e){} return `<a class="lchip" href="${esc(u)}" target="_blank" rel="noopener noreferrer">🔗 ${esc(d||'링크')} 열기</a>`; }).join('');
-    const who = (!bare && isGroup && m.sender!=='me' && m.who) ? `<div class="who">${esc(m.who)}</div>` : '';
+    const who = '';
     const tm = bare ? '' : (m.time?`<small>${m.sender==='me'?'나 · ':''}${esc(m.time)}</small>`:'');
     if (m.img) {
       const one = (m.imgHd||[]).length === 1 && /^사진$/.test((m.text||'').trim()) ? m.imgHd[0] : null;
@@ -506,7 +508,7 @@ function card(c){
     const h = bub0(m);
     if (!isGroup || m.sender === 'me') return h;
     const prev = arr[i-1]; const first = !prev || prev.sender === 'me' || prev.who !== m.who;
-    return `<div class="grow">${first ? `<img onclick="" class="mav" src="${esc(whoAvatar(m.who))}" alt="" onerror="this.onerror=null;this.src=DEFAULT_AV">` : '<span class="mav sp"></span>'}${h}</div>`;
+    return `<div class="grow">${first ? `<img onclick="" class="mav" src="${esc(whoAvatar(m.who))}" alt="" onerror="this.onerror=null;this.src=DEFAULT_AV">` : '<span class="mav sp"></span>'}<div class="gcol">${first && m.who ? `<div class="gname">${esc(m.who)}</div>` : ''}${h}</div></div>`;
   };
   const allM = (c.messages||[]); const recent = allM.slice(-6), older = allM.slice(-20, -6);
   const msgs = (older.length ? `<details><summary>이전 대화 ${older.length}개 더 보기</summary><div class="msgs" style="margin-top:8px">${older.map(bub).join('')}</div></details>` : '') + recent.map(bub).join('');
