@@ -5,14 +5,15 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex,nofollow">
 <meta name="theme-color" content="#fff4f7">
-<title>채채 답장함</title>
+<title>카톡 답장함</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon2-180.png">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/moonspam/NanumSquareRound@1.0/nanumsquareround.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="채채 답장함">
+<meta name="apple-mobile-web-app-title" content="카톡 답장함">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="icon" href="icon2-192.png">
 <style>
@@ -30,11 +31,10 @@
 }
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);background-image:linear-gradient(180deg,#fff4f7 0%,#fbf3ff 55%,#f3f7ff 100%);background-attachment:fixed;color:var(--text);font-family:"NanumSquareRound","Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif;-webkit-text-size-adjust:100%}
-header{position:sticky;top:0;z-index:5;background:rgba(255,244,247,.92);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);padding:14px 16px 8px;border-bottom:1px solid var(--line)}
-.top{display:flex;align-items:center;justify-content:space-between;gap:8px}
-h1{font-size:22px;font-weight:800;margin:0;color:var(--text);letter-spacing:-.4px;display:flex;align-items:center;gap:8px}
+.top{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px}
+h1{font-family:'Jua',"NanumSquareRound",sans-serif;font-size:26px;font-weight:400;margin:0;color:var(--text);letter-spacing:0;display:flex;align-items:center;justify-content:center;gap:8px;grid-column:2}
 h1 .sp{display:inline-flex;width:28px;height:28px;border-radius:10px;background:linear-gradient(135deg,#ffd1dd,#e9d9ff);align-items:center;justify-content:center;font-size:15px}
-.live{font-size:12px;color:var(--sub);display:flex;align-items:center;gap:6px}
+.live{font-size:12px;color:var(--sub);display:flex;align-items:center;gap:6px;grid-column:3;justify-self:end}
 .dot{width:8px;height:8px;border-radius:50%;background:#bbb}
 .dot.on{background:var(--ok)} .dot.err{background:var(--bad)}
 .tabs{display:flex;gap:6px;margin-top:10px;overflow-x:auto;scrollbar-width:none}
@@ -287,7 +287,7 @@ function render(){
   const sel = list.find(c => c.id===state.sel);
   const keepQ = state.q;
   $('#app').innerHTML = `
-  <header><div class="top"><h1><span class="sp">♡</span>채채 답장함</h1><div class="live"><span class="dot ${state.live==='on'?'on':state.live==='err'?'err':''}"></span>${state.live==='on'?'실시간':state.live==='err'?'연결 확인 중':'연결 중'}</div></div>
+  <header><div class="top"><h1><span class="sp">♡</span>카톡 답장함</h1><div class="live"><span class="dot ${state.live==='on'?'on':state.live==='err'?'err':''}"></span>${state.live==='on'?'실시간':state.live==='err'?'연결 확인 중':'연결 중'}</div></div>
   <div class="tabs">${TABS.map(([k,l]) => `<button class="tab ${state.tab===k?'on':''}" data-tab="${k}">${l}<b>${groups[k].length}</b></button>`).join('')}</div></header>
   <main>
   <div class="subbar">${notifBtn()}${state.tab==='sent' && list.length ? `<button class="link" data-act="purge">발송 모두 정리</button>`:''}</div>
@@ -295,7 +295,7 @@ function render(){
   ${sel ? card(sel) : ''}
   <div class="bar"><button class="link" data-act="logout">토큰 다시 넣기</button></div></main>`;
 }
-const APP_VER = '20261007-18';
+const APP_VER = '20261007-19';
 // 새 버전이 올라오면 새로고침 없이 자동으로 바뀜 (캐시를 피해서 새 주소로 다시 열기, 고치는 중이면 끝날 때까지 기다림)
 async function checkVer(){ try { const r = await fetch('version.txt?'+Date.now(), {cache:'no-store'}); if (r.ok) { const v = (await r.text()).trim(); if (v && v !== APP_VER && !(typeof editingNow==='function' && editingNow())) { const u = new URL(location.href); u.searchParams.set('v', v); location.replace(u.toString()); } } } catch(e){} }
 setInterval(checkVer, 15000); document.addEventListener('visibilitychange', () => { if (!document.hidden) checkVer(); }); setTimeout(checkVer, 3000);
@@ -539,7 +539,7 @@ function updateBadge(groups){
   if (seenDrafts){
     const fresh = state.chats.filter(c => c.status==='draft' && (c.draftMessages||[]).length && !seenDrafts.has(c.id + '|' + (c.updatedAt||'')) && !state.saveInfo[c.id]);
     if (fresh.length && typeof Notification!=='undefined' && Notification.permission==='granted' && navigator.serviceWorker){
-      navigator.serviceWorker.ready.then(r => r.showNotification('채채 답장함', { body: `새 답장 초안 ${fresh.length}개 · ${fresh.slice(0,3).map(c=>c.name).join(', ')}`, icon:'icon-192.png', badge:'icon-192.png', tag:'cci-new' })).catch(()=>{});
+      navigator.serviceWorker.ready.then(r => r.showNotification('카톡 답장함', { body: `새 답장 초안 ${fresh.length}개 · ${fresh.slice(0,3).map(c=>c.name).join(', ')}`, icon:'icon-192.png', badge:'icon-192.png', tag:'cci-new' })).catch(()=>{});
     }
   }
   seenDrafts = ids;
@@ -550,7 +550,7 @@ function notifBtn(){
 }
 function fmt(iso){ if(!iso) return ''; const d=new Date(iso); return `${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`; }
 function renderSetup(){
-  $('#app').innerHTML = `<div class="setup"><h1>채채 답장함</h1>
+  $('#app').innerHTML = `<div class="setup"><h1>카톡 답장함</h1>
   <p style="color:var(--sub);line-height:1.6">처음 한 번만 GitHub 토큰을 넣어주세요. 이 기기에만 저장돼요.</p>
   <input id="tk" type="password" placeholder="github_pat_로 시작하는 토큰" autocomplete="off">
   <button class="btn pri" id="save">시작하기</button></div>`;
