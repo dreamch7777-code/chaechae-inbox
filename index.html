@@ -90,6 +90,7 @@ details{margin-top:10px} summary{cursor:pointer;color:var(--sub);font-size:14px}
 .lscroll{width:100%;max-width:640px;max-height:80vh;overflow-y:auto;display:flex;flex-direction:column;gap:10px;align-items:center;-webkit-overflow-scrolling:touch}
 .lbox img{width:100%;height:auto;object-fit:contain;border-radius:8px;-webkit-touch-callout:default;user-select:auto}
 .lbar{display:flex;gap:10px;margin-top:16px}
+.lx{position:fixed;top:calc(env(safe-area-inset-top,0px) + 14px);right:14px;z-index:100;width:44px;height:44px;border-radius:50%;border:0;background:rgba(255,255,255,.18);color:#fff;font-size:22px;font-weight:700;line-height:44px;padding:0;cursor:pointer;backdrop-filter:blur(6px)}
 .lbar button{border:0;border-radius:999px;padding:12px 22px;font:inherit;font-size:16px;font-weight:800;cursor:pointer}
 .lsave{background:#ffd1df;color:#5a2a3c}.lclose{background:rgba(255,255,255,.18);color:#fff}
 .lhint{color:rgba(255,255,255,.6);font-size:12px;margin-top:10px}
@@ -349,7 +350,7 @@ function render(){
   ${sel ? card(sel) : ''}`}
   <div class="bar"><button class="link" data-act="logout">토큰 다시 넣기</button></div></main>`;
 }
-const APP_VER = '20261008-01';
+const APP_VER = '20261008-02';
 // 새 버전이 올라오면 새로고침 없이 자동으로 바뀜 (캐시를 피해서 새 주소로 다시 열기, 고치는 중이면 끝날 때까지 기다림)
 async function checkVer(){ try { const r = await fetch('version.txt?'+Date.now(), {cache:'no-store'}); if (r.ok) { const v = (await r.text()).trim(); if (v && v !== APP_VER && !(typeof editingNow==='function' && editingNow())) { const u = new URL(location.href); u.searchParams.set('v', v); location.replace(u.toString()); } } } catch(e){} }
 setInterval(checkVer, 15000); document.addEventListener('visibilitychange', () => { if (!document.hidden) checkVer(); }); setTimeout(checkVer, 3000);
@@ -436,7 +437,7 @@ async function blobOf(p){ await loadMedia(p); const u = state.mediaUrl[p]; retur
 function openViewer(p, hd){
   const list = hd.length ? hd : [p];
   const box = document.createElement('div'); box.className = 'lbox';
-  box.innerHTML = `<div class="lscroll">${list.map(q => `<img alt="사진" data-q="${esc(q)}">`).join('')}</div><div class="lbar"><button class="lsave">⬇︎ ${list.length > 1 ? list.length + '장 ' : ''}저장</button><button class="lclose">닫기 ✕</button></div><div class="lhint">${hd.length ? '원본 화질 · ' : ''}사진을 길게 눌러도 저장돼요</div>`;
+  box.innerHTML = `<button class="lx lclose" aria-label="닫기">✕</button><div class="lscroll">${list.map(q => `<img alt="사진" data-q="${esc(q)}">`).join('')}</div><div class="lbar"><button class="lsave">⬇︎ ${list.length > 1 ? list.length + '장 ' : ''}저장</button><button class="lclose">닫기 ✕</button></div><div class="lhint">${hd.length ? '원본 화질 · ' : ''}사진을 길게 눌러도 저장돼요</div>`;
   document.body.appendChild(box); document.body.style.overflow = 'hidden';
   const imgs = [...box.querySelectorAll('img')];
   if (hd.length && state.mediaUrl[p]) imgs[0].src = state.mediaUrl[p];          // 원본 받는 동안 작은 사진 먼저
@@ -454,7 +455,7 @@ function openViewer(p, hd){
 }
 function openUrlViewer(u){
   const box = document.createElement('div'); box.className = 'lbox';
-  box.innerHTML = `<div class="lscroll"><img alt="프사" src="${u}"></div><div class="lbar"><button class="lclose">닫기 ✕</button></div><div class="lhint">사진을 길게 눌러 저장할 수 있어요</div>`;
+  box.innerHTML = `<button class="lx lclose" aria-label="닫기">✕</button><div class="lscroll"><img alt="프사" src="${u}"></div><div class="lbar"><button class="lclose">닫기 ✕</button></div><div class="lhint">사진을 길게 눌러 저장할 수 있어요</div>`;
   document.body.appendChild(box); document.body.style.overflow = 'hidden';
   const close = () => { box.remove(); document.body.style.overflow = ''; };
   box.addEventListener('click', e => { if (e.target === box || e.target.classList.contains('lscroll') || e.target.closest('.lclose')) close(); });
