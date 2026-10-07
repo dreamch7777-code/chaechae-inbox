@@ -85,7 +85,8 @@ details{margin-top:10px} summary{cursor:pointer;color:var(--sub);font-size:14px}
 .b.me .mimg{margin-left:auto}
 .mimg.tp{background:transparent;border-radius:0}
 .lbox{position:fixed;inset:0;z-index:99;background:rgba(20,10,16,.94);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;touch-action:pinch-zoom}
-.lbox img{width:100%;max-width:640px;height:auto;max-height:78vh;object-fit:contain;border-radius:8px;-webkit-touch-callout:default;user-select:auto}
+.lscroll{width:100%;max-width:640px;max-height:80vh;overflow-y:auto;display:flex;flex-direction:column;gap:10px;align-items:center;-webkit-overflow-scrolling:touch}
+.lbox img{width:100%;height:auto;object-fit:contain;border-radius:8px;-webkit-touch-callout:default;user-select:auto}
 .lbar{display:flex;gap:10px;margin-top:16px}
 .lbar button{border:0;border-radius:999px;padding:12px 22px;font:inherit;font-size:16px;font-weight:800;cursor:pointer}
 .lsave{background:#ffd1df;color:#5a2a3c}.lclose{background:rgba(255,255,255,.18);color:#fff}
@@ -288,7 +289,7 @@ function render(){
   ${sel ? card(sel) : ''}
   <div class="bar"><button class="link" data-act="logout">토큰 다시 넣기</button></div></main>`;
 }
-const APP_VER = '20261007-10';
+const APP_VER = '20261007-11';
 // 새 버전이 올라오면 새로고침 없이 자동으로 바뀜 (캐시를 피해서 새 주소로 다시 열기, 고치는 중이면 끝날 때까지 기다림)
 async function checkVer(){ try { const r = await fetch('version.txt?'+Date.now(), {cache:'no-store'}); if (r.ok) { const v = (await r.text()).trim(); if (v && v !== APP_VER && !(typeof editingNow==='function' && editingNow())) { const u = new URL(location.href); u.searchParams.set('v', v); location.replace(u.toString()); } } } catch(e){} }
 setInterval(checkVer, 15000); document.addEventListener('visibilitychange', () => { if (!document.hidden) checkVer(); }); setTimeout(checkVer, 3000);
@@ -371,24 +372,25 @@ async function loadMedia(p){
 }
 async function blobOf(p){ await loadMedia(p); const u = state.mediaUrl[p]; return u ? await (await fetch(u)).blob() : null; }
 function openViewer(p, hd){
+  const list = hd.length ? hd : [p];
   const box = document.createElement('div'); box.className = 'lbox';
-  box.innerHTML = `<img alt="사진"><div class="lbar"><button class="lsave">⬇︎ 저장</button><button class="lclose">닫기 ✕</button></div><div class="lhint">사진을 길게 눌러도 저장돼요</div>`;
+  box.innerHTML = `<div class="lscroll">${list.map(q => `<img alt="사진" data-q="${esc(q)}">`).join('')}</div><div class="lbar"><button class="lsave">⬇︎ ${list.length > 1 ? list.length + '장 ' : ''}저장</button><button class="lclose">닫기 ✕</button></div><div class="lhint">${hd.length ? '원본 화질 · ' : ''}사진을 길게 눌러도 저장돼요</div>`;
   document.body.appendChild(box); document.body.style.overflow = 'hidden';
-  const im = box.querySelector('img');
-  const show = q => { if (state.mediaUrl[q]) im.src = state.mediaUrl[q]; };
-  show(p); loadMedia(p).then(() => show(p));
-  if (hd) loadMedia(hd).then(() => { if (state.mediaUrl[hd]) { p = hd; show(hd); } });
+  const imgs = [...box.querySelectorAll('img')];
+  if (hd.length && state.mediaUrl[p]) imgs[0].src = state.mediaUrl[p];          // 원본 받는 동안 작은 사진 먼저
+  list.forEach((q, i) => loadMedia(q).then(() => { if (state.mediaUrl[q]) imgs[i].src = state.mediaUrl[q]; }));
   const close = () => { box.remove(); document.body.style.overflow = ''; };
-  box.addEventListener('click', e => { if (e.target === box || e.target.closest('.lclose')) close(); });
+  box.addEventListener('click', e => { if (e.target === box || e.target.classList.contains('lscroll') || e.target.closest('.lclose')) close(); });
   box.querySelector('.lsave').addEventListener('click', async e => {
-    e.stopPropagation(); const b = await blobOf(p); if (!b) return;
-    const name = 'kakao-' + p.split('/').pop().replace(/\.(jpg|png)$/, '') + (b.type.includes('png') ? '.png' : '.jpg');
-    const f = new File([b], name, { type: b.type || 'image/jpeg' });
-    try { if (navigator.canShare && navigator.canShare({ files: [f] })) { await navigator.share({ files: [f] }); return; } } catch(err){ if (err && err.name === 'AbortError') return; }
-    const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+    e.stopPropagation();
+    const files = [];
+    for (const q of list) { const bl = await blobOf(q); if (bl) files.push(new File([bl], 'kakao-' + q.split('/').pop().replace(/\.(jpg|png)$/, '') + (bl.type.includes('png') ? '.png' : '.jpg'), { type: bl.type || 'image/jpeg' })); }
+    if (!files.length) return;
+    try { if (navigator.canShare && navigator.canShare({ files })) { await navigator.share({ files }); return; } } catch(err){ if (err && err.name === 'AbortError') return; }
+    for (const f of files) { const a = document.createElement('a'); a.href = URL.createObjectURL(f); a.download = f.name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500); }
   });
 }
-document.addEventListener('click', e => { const im = e.target.closest && e.target.closest('img.mimg'); if (im) { e.preventDefault(); e.stopPropagation(); openViewer(im.dataset.mimg, im.dataset.hd || ''); } }, true);
+document.addEventListener('click', e => { const im = e.target.closest && e.target.closest('img.mimg'); if (im) { e.preventDefault(); e.stopPropagation(); openViewer(im.dataset.mimg, (im.dataset.hd || '').split('|').filter(Boolean)); } }, true);
 function goNext(id){
   // 승인·제외하면 바로 다음 사람으로 넘어가기
   const list = (groupsNow()[state.tab]||[]).filter(c => c.id !== id);
@@ -414,9 +416,12 @@ function card(c){
     const chips = links.map(u => { let d=''; try { d = new URL(u).hostname.replace(/^www\./,''); } catch(e){} return `<a class="lchip" href="${esc(u)}" target="_blank" rel="noopener noreferrer">🔗 ${esc(d||'링크')} 열기</a>`; }).join('');
     const who = (isGroup && m.sender!=='me' && m.who) ? `<div class="who">${esc(m.who)}</div>` : '';
     if (m.img) {
-      const u = state.mediaUrl[m.img]; if (!u) setTimeout(() => loadMedia(m.img), 0);
+      const one = (m.imgHd||[]).length === 1 && /^사진$/.test((m.text||'').trim()) ? m.imgHd[0] : null;
+      const src0 = one && state.mediaUrl[one] ? one : m.img;
+      const u = state.mediaUrl[src0]; if (!state.mediaUrl[m.img]) setTimeout(() => loadMedia(m.img), 0);
+      if (one && !state.mediaUrl[one]) setTimeout(() => loadMedia(one).then(() => document.querySelectorAll(`img[data-mimg="${CSS.escape(m.img)}"]`).forEach(el => { if (state.mediaUrl[one]) el.src = state.mediaUrl[one]; })), 0);
       const w = Math.min(240, Math.round((m.imgW||200)*0.9)), h = Math.round(w * (m.imgH||200) / (m.imgW||200));
-      return `<div class="b ${m.sender==='me'?'me':'them'} media">${who}<img class="mimg${/\.png$/.test(m.img)?' tp':''}" data-mimg="${esc(m.img)}" data-hd="${esc(m.imgHd||'')}" ${u?`src="${u}"`:''} width="${w}" height="${h}" style="width:${w}px;height:auto;aspect-ratio:${w}/${h}" alt="${esc(m.text||'사진')}">${m.time?`<small>${m.sender==='me'?'나 · ':''}${esc(m.time)}</small>`:''}</div>`;
+      return `<div class="b ${m.sender==='me'?'me':'them'} media">${who}<img class="mimg${/\.png$/.test(m.img)?' tp':''}" data-mimg="${esc(m.img)}" data-hd="${esc((m.imgHd||[]).join('|'))}" ${u?`src="${u}"`:''} width="${w}" height="${h}" style="width:${w}px;height:auto;aspect-ratio:${w}/${h}" alt="${esc(m.text||'사진')}">${m.time?`<small>${m.sender==='me'?'나 · ':''}${esc(m.time)}</small>`:''}</div>`;
     }
     return `<div class="b ${m.sender==='me'?'me':'them'}">${who}${linkify(esc(m.text))}${chips?`<div class="lchips">${chips}</div>`:''}${m.time?`<small>${m.sender==='me'?'나 · ':''}${esc(m.time)}</small>`:''}</div>`;
   };
