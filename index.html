@@ -314,7 +314,7 @@ function render(){
   ${sel ? card(sel) : ''}
   <div class="bar"><button class="link" data-act="logout">토큰 다시 넣기</button></div></main>`;
 }
-const APP_VER = '20261007-15';
+const APP_VER = '20261007-16';
 // 새 버전이 올라오면 새로고침 없이 자동으로 바뀜 (캐시를 피해서 새 주소로 다시 열기, 고치는 중이면 끝날 때까지 기다림)
 async function checkVer(){ try { const r = await fetch('version.txt?'+Date.now(), {cache:'no-store'}); if (r.ok) { const v = (await r.text()).trim(); if (v && v !== APP_VER && !(typeof editingNow==='function' && editingNow())) { const u = new URL(location.href); u.searchParams.set('v', v); location.replace(u.toString()); } } } catch(e){} }
 setInterval(checkVer, 15000); document.addEventListener('visibilitychange', () => { if (!document.hidden) checkVer(); }); setTimeout(checkVer, 3000);
@@ -485,7 +485,8 @@ function card(c){
       : s==='failed' ? `<span class="st fail">⚠️ 못 보냄: ${esc(state.sent[c.approval.id].reason||'')}</span>`
       : `<span class="st wait">⏳ 발송 대기 (PC가 곧 보내요)</span>`;
   } else if (c.status==='skipped') status = `<span class="st">건너뜀${c.skipMemo?': '+esc(c.skipMemo):''}</span>`;
-  const editable = c.status!=='approved' && bucket(c)!=='sent';
+  const done = (c.status==='approved' && (s==='sent' || s==='sending')) || c.status==='skipped' || c.status==='sent';
+  const editable = c.status!=='approved' && !done;
   const lines = draft.length ? draft : (editable ? [''] : []);
   const draftHtml = !lines.length ? '' : (editable
     ? `<div class="msgs" data-dl="${esc(c.id)}">${lines.map((t,i)=>`<div class="b draft dedit" contenteditable="true" data-ed="${esc(c.id)}" data-i="${i}">${esc(t)}</div>`).join('')}</div>
@@ -496,7 +497,7 @@ function card(c){
     : `<div class="msgs">${lines.map(t=>`<div class="b draft">${esc(t)}</div>`).join('')}</div>`);
   let btns = '';
   if (c.status==='approved' && s!=='sent' && s!=='sending') btns = `<div class="btns" style="grid-template-columns:1fr 1fr"><button class="btn" data-act="unapprove" data-id="${esc(c.id)}">승인 취소</button><button class="btn del" data-act="delete" data-id="${esc(c.id)}">제외</button></div>`;
-  else if (bucket(c)==='sent') btns = `<div class="btns" style="grid-template-columns:1fr"><button class="btn del" data-act="delete" data-id="${esc(c.id)}">제외</button></div>`;
+  else if (done) btns = `<div class="btns" style="grid-template-columns:1fr"><button class="btn del" data-act="delete" data-id="${esc(c.id)}">제외</button></div>`;
   else btns = `<div class="btns" style="grid-template-columns:2fr 1fr"><button class="btn pri" data-act="approve" data-id="${esc(c.id)}">승인하고 발송</button><button class="btn del" data-act="delete" data-id="${esc(c.id)}">제외</button></div>${blank?'<div class="hint">[ ] 빈칸을 채워야 승인할 수 있어요 (말풍선을 눌러서 고치세요)</div>':''}`;
   return `<div class="card">
     <div class="head">${avatar(c)}<div><div class="name">${esc(c.name)}${isGroup?' <span class="gbadge">단톡</span>':''}</div><div class="time">${esc(c.displayTime||'')}</div></div></div>
@@ -600,6 +601,7 @@ document.addEventListener('click', e => {
   }
   if (!c) return;
   if (act==='approve'){
+    if (c.status === 'approved' && ['sent','sending'].includes(sendState(c))) { toast('이미 보낸 답장이에요'); return; }   // 이미 보낸 건 다시 못 보냄
     const domLines = bubblesOf(id).length ? readLines(id) : null;
     if (domLines){ clearTimeout(saveTimers[id]); delete saveTimers[id]; c.draftMessages = domLines; }
     const msgs = (c.draftMessages||[]).map(s=>s.trim()).filter(Boolean);
