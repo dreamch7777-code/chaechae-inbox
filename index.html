@@ -79,6 +79,13 @@ details{margin-top:10px} summary{cursor:pointer;color:var(--sub);font-size:14px}
 .saveinfo{font-size:12px;color:var(--sub);text-align:right;margin-top:4px}
 .lchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
 .lchip{display:inline-block;background:#fff;border:1px solid var(--line);color:#2563eb;border-radius:12px;padding:9px 12px;font-size:14px;font-weight:700;text-decoration:none}
+.b.media{background:transparent!important;box-shadow:none!important;border:0!important;padding:2px 0!important}
+.b.media.ph{padding:2px 0!important}
+.mimg{display:block;max-width:100%;border-radius:14px;background:#f6e9ef;cursor:zoom-in}
+.b.me .mimg{margin-left:auto}
+.mimg.tp{background:transparent;border-radius:0}
+.mimg.big{width:100%!important;cursor:zoom-out}
+.b.media small{display:block;margin-top:3px}
 .who{font-size:12px;font-weight:800;color:var(--accent);margin-bottom:3px}
 .gbadge{font-size:11px;font-weight:800;background:#e9d9ff;color:#5b3a8a;border-radius:999px;padding:2px 8px;vertical-align:middle}
 .shotrow{margin-top:10px}
@@ -276,7 +283,7 @@ function render(){
   ${sel ? card(sel) : ''}
   <div class="bar"><button class="link" data-act="logout">토큰 다시 넣기</button></div></main>`;
 }
-const APP_VER = '20261007-8';
+const APP_VER = '20261007-9';
 // 새 버전이 올라오면 새로고침 없이 자동으로 바뀜 (캐시를 피해서 새 주소로 다시 열기, 고치는 중이면 끝날 때까지 기다림)
 async function checkVer(){ try { const r = await fetch('version.txt?'+Date.now(), {cache:'no-store'}); if (r.ok) { const v = (await r.text()).trim(); if (v && v !== APP_VER && !(typeof editingNow==='function' && editingNow())) { const u = new URL(location.href); u.searchParams.set('v', v); location.replace(u.toString()); } } } catch(e){} }
 setInterval(checkVer, 15000); document.addEventListener('visibilitychange', () => { if (!document.hidden) checkVer(); }); setTimeout(checkVer, 3000);
@@ -349,6 +356,15 @@ async function loadShot(c){
   } catch(e){ state.shotMiss[c.id] = true; }
   render();
 }
+state.mediaUrl = {}; const mediaBusy = {};
+async function loadMedia(p){
+  if (state.mediaUrl[p] || mediaBusy[p]) return; mediaBusy[p] = true;
+  try { const r = await api(p, { headers:{ 'Accept':'application/vnd.github.raw+json' } });
+    if (r.ok) { state.mediaUrl[p] = URL.createObjectURL(await r.blob());
+      document.querySelectorAll(`img[data-mimg="${CSS.escape(p)}"]`).forEach(el => el.src = state.mediaUrl[p]); }
+  } catch(e){} finally { mediaBusy[p] = false; }
+}
+document.addEventListener('click', e => { const im = e.target.closest && e.target.closest('img.mimg'); if (im) { im.classList.toggle('big'); e.stopPropagation(); } }, true);
 function goNext(id){
   // 승인·제외하면 바로 다음 사람으로 넘어가기
   const list = (groupsNow()[state.tab]||[]).filter(c => c.id !== id);
@@ -373,6 +389,11 @@ function card(c){
     const links = (m.text||'').match(/https?:\/\/[^\s<>"']+/g) || [];
     const chips = links.map(u => { let d=''; try { d = new URL(u).hostname.replace(/^www\./,''); } catch(e){} return `<a class="lchip" href="${esc(u)}" target="_blank" rel="noopener noreferrer">🔗 ${esc(d||'링크')} 열기</a>`; }).join('');
     const who = (isGroup && m.sender!=='me' && m.who) ? `<div class="who">${esc(m.who)}</div>` : '';
+    if (m.img) {
+      const u = state.mediaUrl[m.img]; if (!u) setTimeout(() => loadMedia(m.img), 0);
+      const w = Math.min(240, Math.round((m.imgW||200)*0.9)), h = Math.round(w * (m.imgH||200) / (m.imgW||200));
+      return `<div class="b ${m.sender==='me'?'me':'them'} media">${who}<img class="mimg${/\.png$/.test(m.img)?' tp':''}" data-mimg="${esc(m.img)}" ${u?`src="${u}"`:''} width="${w}" height="${h}" style="width:${w}px;height:auto;aspect-ratio:${w}/${h}" alt="${esc(m.text||'사진')}">${m.time?`<small>${m.sender==='me'?'나 · ':''}${esc(m.time)}</small>`:''}</div>`;
+    }
     return `<div class="b ${m.sender==='me'?'me':'them'}">${who}${linkify(esc(m.text))}${chips?`<div class="lchips">${chips}</div>`:''}${m.time?`<small>${m.sender==='me'?'나 · ':''}${esc(m.time)}</small>`:''}</div>`;
   };
   const allM = (c.messages||[]); const recent = allM.slice(-6), older = allM.slice(-20, -6);
