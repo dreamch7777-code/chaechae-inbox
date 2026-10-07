@@ -110,13 +110,15 @@ details{margin-top:10px} summary{cursor:pointer;color:var(--sub);font-size:14px}
 .mini{border:1.5px solid var(--line);background:var(--card);color:var(--text);border-radius:999px;padding:7px 13px;font-size:13px;cursor:pointer}
 .mini:active{background:var(--chip)}
 .emo{margin-top:8px;border:1px solid var(--line);border-radius:16px;background:var(--bg);padding:10px}
-.ecats{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
-.ecat{border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:999px;padding:6px 11px;font-size:13px;cursor:pointer}
+.ecats{display:flex;flex-wrap:nowrap;gap:6px;margin:0 -10px 10px;padding:2px 10px 8px;overflow-x:auto;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity}
+.ecats .ecat{flex:none;scroll-snap-align:start}
+.ehint{font-size:12px;color:var(--sub);margin:0 2px 8px}
+.ecat{border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:999px;padding:8px 14px;font-size:14px;cursor:pointer;white-space:nowrap;font-family:inherit}
 .ecat.on{background:var(--chipOn);color:var(--chipOnText);border-color:var(--chipOn)}
 .ecat.star{font-size:15px;color:#f5b400}
 .ecat.star.on{color:#fff}
-.egrid{display:flex;flex-wrap:wrap;gap:6px;max-height:280px;overflow-y:auto;-webkit-overflow-scrolling:touch}
-.ei{border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:12px;padding:8px 10px;font-size:15px;cursor:pointer;white-space:nowrap}
+.egrid{display:flex;flex-wrap:wrap;gap:7px;max-height:420px;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.ei{border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:14px;padding:11px 13px;font-size:17px;cursor:pointer;white-space:nowrap;font-family:inherit;min-width:52px}
 .ei:active{background:var(--meSoft)}
 .notif{border:0;background:var(--chip);color:var(--text);border-radius:999px;padding:6px 10px;font-size:12px;cursor:pointer}
 .subbar{display:flex;justify-content:flex-end;gap:8px;align-items:center;min-height:8px;margin:4px 0}
@@ -345,7 +347,7 @@ function render(){
   ${sel ? card(sel) : ''}`}
   <div class="bar"><button class="link" data-act="logout">토큰 다시 넣기</button></div></main>`;
 }
-const APP_VER = '20261007-22';
+const APP_VER = '20261007-23';
 // 새 버전이 올라오면 새로고침 없이 자동으로 바뀜 (캐시를 피해서 새 주소로 다시 열기, 고치는 중이면 끝날 때까지 기다림)
 async function checkVer(){ try { const r = await fetch('version.txt?'+Date.now(), {cache:'no-store'}); if (r.ok) { const v = (await r.text()).trim(); if (v && v !== APP_VER && !(typeof editingNow==='function' && editingNow())) { const u = new URL(location.href); u.searchParams.set('v', v); location.replace(u.toString()); } } } catch(e){} }
 setInterval(checkVer, 15000); document.addEventListener('visibilitychange', () => { if (!document.hidden) checkVer(); }); setTimeout(checkVer, 3000);
@@ -543,9 +545,10 @@ function emoPicker(id){
   return `<div class="emo" data-emo="${esc(id)}">${emoInner(id)}</div>`;
 }
 function emoInner(id){
-  const cat = (state.emoCat==='★' || EMO[state.emoCat]) ? state.emoCat : EMO_CATS[0];
+  let cat = (state.emoCat==='★' || EMO[state.emoCat]) ? state.emoCat : EMO_CATS[0];
+  if (cat==='★' && !state.emoCat && recentEmos().length < 6) cat = EMO_CATS[1];
   const items = cat==='★' ? recentEmos() : EMO[cat];
-  return `<div class="ecats">${EMO_CATS.map(k=>`<button class="ecat ${k===cat?'on':''} ${k==='★'?'star':''}" data-act="emocat" data-id="${esc(id)}" data-cat="${esc(k)}">${esc(k)}</button>`).join('')}</div>
+  return `<div class="ehint">종류는 옆으로 넘겨요 →</div><div class="ecats">${EMO_CATS.map(k=>`<button class="ecat ${k===cat?'on':''} ${k==='★'?'star':''}" data-act="emocat" data-id="${esc(id)}" data-cat="${esc(k)}">${esc(k)}</button>`).join('')}</div>
   <div class="egrid">${items.length?items.map(e=>`<button class="ei" data-act="emo" data-id="${esc(id)}" data-e="${esc(e)}">${esc(e)}</button>`).join(''):'<span class="st">아직 쓴 특수 임티가 없어요</span>'}</div>`;
 }
 // ---------- inline edit + autosave ----------
