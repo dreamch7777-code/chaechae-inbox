@@ -81,7 +81,8 @@ details{margin-top:10px} summary{cursor:pointer;color:var(--sub);font-size:14px}
 .lchip{display:inline-block;background:#fff;border:1px solid var(--line);color:#2563eb;border-radius:12px;padding:9px 12px;font-size:14px;font-weight:700;text-decoration:none}
 .b.media{background:transparent!important;box-shadow:none!important;border:0!important;padding:2px 0!important}
 .b.media.ph{padding:2px 0!important}
-.mimg{display:block;max-width:100%;border-radius:14px;background:#f6e9ef;cursor:zoom-in}
+.mimg{display:block;max-width:100%;border-radius:14px;background:#f6e9ef;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.av,.mav{cursor:pointer}
 .b.me .mimg{margin-left:auto}
 .mimg.tp{background:transparent;border-radius:0}
 .lbox{position:fixed;inset:0;z-index:99;background:rgba(20,10,16,.94);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;touch-action:pinch-zoom}
@@ -294,7 +295,7 @@ function render(){
   ${sel ? card(sel) : ''}
   <div class="bar"><button class="link" data-act="logout">토큰 다시 넣기</button></div></main>`;
 }
-const APP_VER = '20261007-17';
+const APP_VER = '20261007-18';
 // 새 버전이 올라오면 새로고침 없이 자동으로 바뀜 (캐시를 피해서 새 주소로 다시 열기, 고치는 중이면 끝날 때까지 기다림)
 async function checkVer(){ try { const r = await fetch('version.txt?'+Date.now(), {cache:'no-store'}); if (r.ok) { const v = (await r.text()).trim(); if (v && v !== APP_VER && !(typeof editingNow==='function' && editingNow())) { const u = new URL(location.href); u.searchParams.set('v', v); location.replace(u.toString()); } } } catch(e){} }
 setInterval(checkVer, 15000); document.addEventListener('visibilitychange', () => { if (!document.hidden) checkVer(); }); setTimeout(checkVer, 3000);
@@ -395,6 +396,14 @@ function openViewer(p, hd){
     for (const f of files) { const a = document.createElement('a'); a.href = URL.createObjectURL(f); a.download = f.name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500); }
   });
 }
+function openUrlViewer(u){
+  const box = document.createElement('div'); box.className = 'lbox';
+  box.innerHTML = `<div class="lscroll"><img alt="프사" src="${u}"></div><div class="lbar"><button class="lclose">닫기 ✕</button></div><div class="lhint">사진을 길게 눌러 저장할 수 있어요</div>`;
+  document.body.appendChild(box); document.body.style.overflow = 'hidden';
+  const close = () => { box.remove(); document.body.style.overflow = ''; };
+  box.addEventListener('click', e => { if (e.target === box || e.target.classList.contains('lscroll') || e.target.closest('.lclose')) close(); });
+}
+document.addEventListener('click', e => { const a = e.target.closest && e.target.closest('img.av, img.mav'); if (a && a.src && !a.src.includes('svg')) { e.preventDefault(); e.stopPropagation(); openUrlViewer(a.src); } }, true);
 document.addEventListener('click', e => { const im = e.target.closest && e.target.closest('img.mimg'); if (im) { e.preventDefault(); e.stopPropagation(); openViewer(im.dataset.mimg, (im.dataset.hd || '').split('|').filter(Boolean)); } }, true);
 function goNext(id){
   // 승인·제외하면 바로 다음 사람으로 넘어가기
@@ -416,7 +425,7 @@ function whoAvatar(who){
 function avatarSrc(c){ const src = state.avatars[c.id] || state.avatars[c.name] || c.avatar; return src && /^data:image\/|^https:/.test(src) ? src : DEFAULT_AV; }
 function avatar(c){
   const src = state.avatars[c.id] || state.avatars[c.name] || c.avatar;
-  return `<img class="av" src="${esc(src && /^data:image\/|^https:/.test(src) ? src : DEFAULT_AV)}" alt="" onerror="this.onerror=null;this.src=DEFAULT_AV">`;
+  return `<img onclick="" class="av" src="${esc(src && /^data:image\/|^https:/.test(src) ? src : DEFAULT_AV)}" alt="" onerror="this.onerror=null;this.src=DEFAULT_AV">`;
 }
 function card(c){
   const s = sendState(c);
@@ -435,7 +444,7 @@ function card(c){
       const u = state.mediaUrl[src0]; if (!state.mediaUrl[m.img]) setTimeout(() => loadMedia(m.img), 0);
       if (one && !state.mediaUrl[one]) setTimeout(() => loadMedia(one).then(() => document.querySelectorAll(`img[data-mimg="${CSS.escape(m.img)}"]`).forEach(el => { if (state.mediaUrl[one]) el.src = state.mediaUrl[one]; })), 0);
       const w = Math.min(240, Math.round((m.imgW||200)*0.9)), h = Math.round(w * (m.imgH||200) / (m.imgW||200));
-      return `<div class="b ${m.sender==='me'?'me':'them'} media">${who}<img class="mimg${/\.png$/.test(m.img)?' tp':''}" data-mimg="${esc(m.img)}" data-hd="${esc((m.imgHd||[]).join('|'))}" ${u?`src="${u}"`:''} width="${w}" height="${h}" style="width:${w}px;height:auto;aspect-ratio:${w}/${h}" alt="${esc(m.text||'사진')}">${tm}</div>`;
+      return `<div class="b ${m.sender==='me'?'me':'them'} media">${who}<img onclick="" class="mimg${/\.png$/.test(m.img)?' tp':''}" data-mimg="${esc(m.img)}" data-hd="${esc((m.imgHd||[]).join('|'))}" ${u?`src="${u}"`:''} width="${w}" height="${h}" style="width:${w}px;height:auto;aspect-ratio:${w}/${h}" alt="${esc(m.text||'사진')}">${tm}</div>`;
     }
     return `<div class="b ${m.sender==='me'?'me':'them'}">${who}${linkify(esc(m.text))}${tm}</div>`;
   };
@@ -443,7 +452,7 @@ function card(c){
     const h = bub0(m);
     if (!isGroup || m.sender === 'me') return h;
     const prev = arr[i-1]; const first = !prev || prev.sender === 'me' || prev.who !== m.who;
-    return `<div class="grow">${first ? `<img class="mav" src="${esc(whoAvatar(m.who))}" alt="" onerror="this.onerror=null;this.src=DEFAULT_AV">` : '<span class="mav sp"></span>'}${h}</div>`;
+    return `<div class="grow">${first ? `<img onclick="" class="mav" src="${esc(whoAvatar(m.who))}" alt="" onerror="this.onerror=null;this.src=DEFAULT_AV">` : '<span class="mav sp"></span>'}${h}</div>`;
   };
   const allM = (c.messages||[]); const recent = allM.slice(-6), older = allM.slice(-20, -6);
   const msgs = (older.length ? `<details><summary>이전 대화 ${older.length}개 더 보기</summary><div class="msgs" style="margin-top:8px">${older.map(bub).join('')}</div></details>` : '') + recent.map(bub).join('');
