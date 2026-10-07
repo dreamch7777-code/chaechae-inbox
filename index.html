@@ -269,8 +269,10 @@ function render(){
   ${sel ? card(sel) : ''}
   <div class="bar"><button class="link" data-act="logout">토큰 다시 넣기</button></div></main>`;
 }
-const APP_VER = '20261007-6';
-setInterval(async () => { try { const r = await fetch('version.txt?'+Date.now(), {cache:'no-store'}); if (r.ok) { const v = (await r.text()).trim(); if (v && v !== APP_VER) location.reload(); } } catch(e){} }, 60000);
+const APP_VER = '20261007-7';
+// 새 버전이 올라오면 새로고침 없이 자동으로 바뀜 (캐시를 피해서 새 주소로 다시 열기, 고치는 중이면 끝날 때까지 기다림)
+async function checkVer(){ try { const r = await fetch('version.txt?'+Date.now(), {cache:'no-store'}); if (r.ok) { const v = (await r.text()).trim(); if (v && v !== APP_VER && !(typeof editingNow==='function' && editingNow())) { const u = new URL(location.href); u.searchParams.set('v', v); location.replace(u.toString()); } } } catch(e){} }
+setInterval(checkVer, 15000); document.addEventListener('visibilitychange', () => { if (!document.hidden) checkVer(); }); setTimeout(checkVer, 3000);
 const DEFAULT_AV = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="26" fill="#a9c9f5"/><circle cx="32" cy="25" r="10" fill="#e6f0fd"/><path d="M14 52c2-10 10-15 18-15s16 5 18 15z" fill="#e6f0fd"/></svg>');
 window.DEFAULT_AV = DEFAULT_AV;
 function linkify(h){
