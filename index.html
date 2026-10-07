@@ -237,9 +237,9 @@ function sendState(c){
 function bucket(c){
   if (c.status === 'deleted') return null;
   const s = sendState(c);
+  if (c.category === 'inquiry') return 'inquiry';          // 업체 예약·문의는 보냈거나 내가 답해도 항상 이 탭에
   if (c.status === 'approved') return (s === 'sent') ? 'sent' : 'reply';
   if (c.status === 'skipped' || c.status === 'sent') return 'sent';
-  if (c.category === 'inquiry') return 'inquiry';
   if (c.category === 'plus' || /톡클라우드 복원 필요/.test(c.summary||'') || c.checkReason) return 'check';
   return 'reply';
 }
@@ -257,7 +257,7 @@ function groupsNow(){
 function stLabel(c){
   const s = sendState(c);
   if (c.status==='approved') return s==='sent'?'보냄':s==='failed'?'못 보냄':'발송 중';
-  if (c.status==='skipped') return '건너뜀';
+  if (c.status==='skipped') return '내가 답함';
   if (bucket(c)==='check') return '확인 필요';
   if (bucket(c)==='inquiry') return (c.draftMessages||[]).length ? '답장 대기' : '업체 답 대기';
   return (c.draftMessages||[]).length ? '답장 대기' : '읽기만';
@@ -289,7 +289,7 @@ function render(){
   ${sel ? card(sel) : ''}
   <div class="bar"><button class="link" data-act="logout">토큰 다시 넣기</button></div></main>`;
 }
-const APP_VER = '20261007-11';
+const APP_VER = '20261007-12';
 // 새 버전이 올라오면 새로고침 없이 자동으로 바뀜 (캐시를 피해서 새 주소로 다시 열기, 고치는 중이면 끝날 때까지 기다림)
 async function checkVer(){ try { const r = await fetch('version.txt?'+Date.now(), {cache:'no-store'}); if (r.ok) { const v = (await r.text()).trim(); if (v && v !== APP_VER && !(typeof editingNow==='function' && editingNow())) { const u = new URL(location.href); u.searchParams.set('v', v); location.replace(u.toString()); } } } catch(e){} }
 setInterval(checkVer, 15000); document.addEventListener('visibilitychange', () => { if (!document.hidden) checkVer(); }); setTimeout(checkVer, 3000);
