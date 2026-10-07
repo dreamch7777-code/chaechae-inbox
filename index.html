@@ -289,7 +289,7 @@ function render(){
   ${sel ? card(sel) : ''}
   <div class="bar"><button class="link" data-act="logout">토큰 다시 넣기</button></div></main>`;
 }
-const APP_VER = '20261007-12';
+const APP_VER = '20261007-13';
 // 새 버전이 올라오면 새로고침 없이 자동으로 바뀜 (캐시를 피해서 새 주소로 다시 열기, 고치는 중이면 끝날 때까지 기다림)
 async function checkVer(){ try { const r = await fetch('version.txt?'+Date.now(), {cache:'no-store'}); if (r.ok) { const v = (await r.text()).trim(); if (v && v !== APP_VER && !(typeof editingNow==='function' && editingNow())) { const u = new URL(location.href); u.searchParams.set('v', v); location.replace(u.toString()); } } } catch(e){} }
 setInterval(checkVer, 15000); document.addEventListener('visibilitychange', () => { if (!document.hidden) checkVer(); }); setTimeout(checkVer, 3000);
@@ -450,7 +450,6 @@ function card(c){
   else btns = `<div class="btns" style="grid-template-columns:2fr 1fr"><button class="btn pri" data-act="approve" data-id="${esc(c.id)}">승인하고 발송</button><button class="btn del" data-act="delete" data-id="${esc(c.id)}">제외</button></div>${blank?'<div class="hint">[ ] 빈칸을 채워야 승인할 수 있어요 (말풍선을 눌러서 고치세요)</div>':''}`;
   return `<div class="card">
     <div class="head">${avatar(c)}<div><div class="name">${esc(c.name)}${isGroup?' <span class="gbadge">단톡</span>':''}</div><div class="time">${esc(c.displayTime||'')}</div></div></div>
-    <div class="shotrow"><button class="mini" data-act="shot" data-id="${esc(c.id)}">${state.shotOpen[c.id]?'카톡 화면 접기':'📷 카톡 화면 그대로 보기'}</button></div>
     ${state.shotOpen[c.id]?`<div class="shot" data-shot="${esc(c.id)}">${state.shotUrl[c.id]?`<img src="${state.shotUrl[c.id]}" alt="카톡 화면">`:(state.shotMiss[c.id]?'<div class="st">아직 찍은 화면이 없어요 (다음 회차에 찍혀요)</div>':'<div class="st">불러오는 중…</div>')}</div>`:''}
     ${reason?`<div class="reason">${esc(reason)}</div>`:''}
     ${c.summary && !reason?`<div class="summary">${esc(c.summary)}</div>`:''}
