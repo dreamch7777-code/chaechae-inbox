@@ -90,6 +90,7 @@ details{margin-top:10px} summary{cursor:pointer;color:var(--sub);font-size:14px}
 .lscroll{width:100%;max-width:640px;max-height:80vh;overflow-y:auto;display:flex;flex-direction:column;gap:10px;align-items:center;-webkit-overflow-scrolling:touch}
 .lbox img{width:100%;height:auto;object-fit:contain;border-radius:8px;-webkit-touch-callout:default;user-select:auto}
 .lbar{display:flex;gap:10px;margin-top:16px}
+.favb{border:0;background:none;font-size:20px;line-height:1;color:#e8b4c4;cursor:pointer;padding:0 2px;vertical-align:-2px}.favb.on{color:#f5b301}
 .lx{position:fixed;top:calc(env(safe-area-inset-top,0px) + 14px);right:14px;z-index:100;width:44px;height:44px;border-radius:50%;border:0;background:rgba(255,255,255,.18);color:#fff;font-size:22px;font-weight:700;line-height:44px;padding:0;cursor:pointer;backdrop-filter:blur(6px)}
 .lbar button{border:0;border-radius:999px;padding:12px 22px;font:inherit;font-size:16px;font-weight:800;cursor:pointer}
 .lsave{background:#ffd1df;color:#5a2a3c}.lclose{background:rgba(255,255,255,.18);color:#fff}
@@ -227,6 +228,21 @@ async function loadSent(){
   try { state.sent = JSON.parse(await r.text()) || {}; } catch(e) { state.sent = {}; }
   return true;
 }
+state.favs = []; 
+async function loadFavs(){
+  try { const r = await api('favorites.json', { headers:{ 'Accept':'application/vnd.github.raw+json' } }); if (r.ok) { const j = JSON.parse(await r.text()); state.favs = j.names || []; } } catch(e){}
+}
+async function toggleFav(name){
+  const on = !state.favs.includes(name);
+  state.favs = on ? [...state.favs, name] : state.favs.filter(n => n !== name); render();
+  for (let t = 0; t < 4; t++) {
+    const g = await api('favorites.json'); let sha, cur = [];
+    if (g.ok) { const j = await g.json(); sha = j.sha; try { cur = JSON.parse(b64dec(j.content)).names || []; } catch(e){} }
+    cur = on ? [...new Set([...cur, name])] : cur.filter(n => n !== name);
+    const r = await api('favorites.json', { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ message: on ? '즐찾 추가' : '즐찾 빼기', content: b64enc(JSON.stringify({ names: cur }, null, 1)), ...(sha ? { sha } : {}) }) });
+    if (r.ok) { state.favs = cur; render(); toast(on ? '⭐ 즐찾에 넣었어요' : '즐찾에서 뺐어요'); return; }
+  }
+}
 state.events = []; state.evAt = 0;
 async function loadEvents(){
   try { const r = await api('events.json', { headers:{ 'Accept':'application/vnd.github.raw+json' } }); if (r.ok) { const j = JSON.parse(await r.text()); state.events = Array.isArray(j) ? j : (j.events||[]); } } catch(e){}
@@ -306,11 +322,11 @@ function bucket(c){
 }
 
 // ---------- render ----------
-const TABS = [['reply','전체'],['check','확인 필요'],['inquiry','예약·문의'],['sent','발송'],['cal','📅 달력']];
+const TABS = [['reply','전체'],['star','⭐'],['check','확인 필요'],['inquiry','예약·문의'],['sent','발송'],['cal','📅 달력']];
 state.q = ''; state.sel = ls.get('cci_sel') || null;
 function groupsNow(){
-  const groups = { reply:[], check:[], inquiry:[], sent:[] };
-  for (const c of state.chats){ const b = bucket(c); if (b) groups[b].push(c); }
+  const groups = { reply:[], star:[], check:[], inquiry:[], sent:[] };
+  for (const c of state.chats){ const b = bucket(c); if (b) { groups[b].push(c); if ((state.favs||[]).includes(c.name)) groups.star.push(c); } }
   const byTime = (a,b) => String(b.sortKey||b.updatedAt||'').localeCompare(String(a.sortKey||a.updatedAt||''));
   Object.values(groups).forEach(g => g.sort(byTime));
   return groups;
@@ -350,7 +366,7 @@ function render(){
   ${sel ? card(sel) : ''}`}
   <div class="bar"><button class="link" data-act="logout">토큰 다시 넣기</button></div></main>`;
 }
-const APP_VER = '20261008-02';
+const APP_VER = '20261008-03';
 // 새 버전이 올라오면 새로고침 없이 자동으로 바뀜 (캐시를 피해서 새 주소로 다시 열기, 고치는 중이면 끝날 때까지 기다림)
 async function checkVer(){ try { const r = await fetch('version.txt?'+Date.now(), {cache:'no-store'}); if (r.ok) { const v = (await r.text()).trim(); if (v && v !== APP_VER && !(typeof editingNow==='function' && editingNow())) { const u = new URL(location.href); u.searchParams.set('v', v); location.replace(u.toString()); } } } catch(e){} }
 setInterval(checkVer, 15000); document.addEventListener('visibilitychange', () => { if (!document.hidden) checkVer(); }); setTimeout(checkVer, 3000);
@@ -536,7 +552,7 @@ function card(c){
   else if (done) btns = `<div class="btns" style="grid-template-columns:1fr"><button class="btn del" data-act="delete" data-id="${esc(c.id)}">제외</button></div>`;
   else btns = `<div class="btns" style="grid-template-columns:2fr 1fr"><button class="btn pri" data-act="approve" data-id="${esc(c.id)}">승인하고 발송</button><button class="btn del" data-act="delete" data-id="${esc(c.id)}">제외</button></div>${blank?'<div class="hint">[ ] 빈칸을 채워야 승인할 수 있어요 (말풍선을 눌러서 고치세요)</div>':''}`;
   return `<div class="card">
-    <div class="head">${avatar(c)}<div><div class="name">${esc(c.name)}${isGroup?' <span class="gbadge">단톡</span>':''}</div><div class="time">${esc(c.displayTime||'')}</div></div></div>
+    <div class="head">${avatar(c)}<div><div class="name">${esc(c.name)}${isGroup?' <span class="gbadge">단톡</span>':''} <button class="favb ${(state.favs||[]).includes(c.name)?'on':''}" data-act="fav" data-id="${esc(c.id)}" aria-label="즐찾">${(state.favs||[]).includes(c.name)?'★':'☆'}</button></div><div class="time">${esc(c.displayTime||'')}</div></div></div>
     ${state.shotOpen[c.id]?`<div class="shot" data-shot="${esc(c.id)}">${state.shotUrl[c.id]?`<img src="${state.shotUrl[c.id]}" alt="카톡 화면">`:(state.shotMiss[c.id]?'<div class="st">아직 찍은 화면이 없어요 (다음 회차에 찍혀요)</div>':'<div class="st">불러오는 중…</div>')}</div>`:''}
     ${reason?`<div class="reason">${esc(reason)}</div>`:''}
     ${c.summary && !reason?`<div class="summary">${esc(c.summary)}</div>`:''}
@@ -638,6 +654,7 @@ document.addEventListener('click', e => {
     toast('보낸 것을 정리했어요'); return;
   }
   if (!c) return;
+  if (act==='fav'){ toggleFav(c.name); return; }
   if (act==='approve'){
     if (c.status === 'approved' && ['sent','sending'].includes(sendState(c))) { toast('이미 보낸 답장이에요'); return; }   // 이미 보낸 건 다시 못 보냄
     const domLines = bubblesOf(id).length ? readLines(id) : null;
@@ -701,7 +718,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden && to
 async function start(){
   render();
   try { await loadChats(true); await loadSent(); state.live='on'; } catch(e){ if (e.message==='auth'){ toast('토큰이 맞지 않아요'); ls.del('cci_token'); token=''; } else state.live='err'; }
-  render(); loadAvatars().then(render); loadEvents().then(render);
+  render(); loadAvatars().then(render); loadEvents().then(render); loadFavs().then(render);
   clearTimeout(timer); timer = setTimeout(tick, POLL_MS);
 }
 
