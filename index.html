@@ -347,7 +347,7 @@ function render(){
   ${sel ? card(sel) : ''}`}
   <div class="bar"><button class="link" data-act="logout">토큰 다시 넣기</button></div></main>`;
 }
-const APP_VER = '20261007-23';
+const APP_VER = '20261007-24';
 // 새 버전이 올라오면 새로고침 없이 자동으로 바뀜 (캐시를 피해서 새 주소로 다시 열기, 고치는 중이면 끝날 때까지 기다림)
 async function checkVer(){ try { const r = await fetch('version.txt?'+Date.now(), {cache:'no-store'}); if (r.ok) { const v = (await r.text()).trim(); if (v && v !== APP_VER && !(typeof editingNow==='function' && editingNow())) { const u = new URL(location.href); u.searchParams.set('v', v); location.replace(u.toString()); } } } catch(e){} }
 setInterval(checkVer, 15000); document.addEventListener('visibilitychange', () => { if (!document.hidden) checkVer(); }); setTimeout(checkVer, 3000);
@@ -620,7 +620,7 @@ document.addEventListener('click', e => {
   const pk = e.target.closest('[data-pick]');
   if (pk){ const prev = state.sel; if (prev) flushSave(prev); state.sel = pk.dataset.pick; ls.set('cci_sel', state.sel); render(); const cd=document.querySelector('.card'); if (cd) cd.scrollIntoView({behavior:'smooth',block:'start'}); return; }
   const t = e.target.closest('[data-tab],[data-act]'); if (!t) return;
-  if (t.dataset.tab){ state.q=''; state.sel=null; state.tab = t.dataset.tab; ls.set('cci_tab', state.tab); render(); window.scrollTo(0,0); return; }
+  if (t.dataset.tab){ state.q=''; state.sel=null; state.tab = t.dataset.tab; ls.set('cci_tab', state.tab); render(); window.scrollTo(0,0); if (state.tab==='cal') loadEvents().then(render); return; }
   const id = t.dataset.id, act = t.dataset.act, c = state.chats.find(x => x.id === id);
   if (act==='notif'){ Notification.requestPermission().then(p => { toast(p==='granted'?'알림 켰어요 🔔':'알림이 꺼져 있어요'); render(); }); return; }
   if (act==='emocat'){ state.emoCat = t.dataset.cat; ls.set('cci_emocat', state.emoCat); const box=document.querySelector(`[data-emo="${CSS.escape(id)}"]`); if (box) box.innerHTML = emoInner(id); return; }
@@ -684,7 +684,7 @@ async function tick(){
   try {
     const a = await loadChats(false); const b = await loadSent();
     state.live='on'; state.lastOk=Date.now();
-    if (Date.now() - state.evAt > 20000) { const n = JSON.stringify(state.events); await loadEvents(); if (JSON.stringify(state.events) !== n) render(); }
+    if (Date.now() - state.evAt > 10000) { const n = JSON.stringify(state.events); await loadEvents(); if (JSON.stringify(state.events) !== n) render(); }
     if (a||b) render();
     else if (state._wasErr) render();
     state._wasErr = false;
