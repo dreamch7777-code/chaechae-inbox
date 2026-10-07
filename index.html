@@ -604,7 +604,7 @@ window.addEventListener('message', async (ev) => {
   } catch(e){ ev.source && ev.source.postMessage({ type:'cci-import-fail', error: String(e) }, ev.origin); }
 });
 if (window.opener) { try { window.opener.postMessage({ type:'cci-ready' }, OLD_ORIGIN); } catch(e){} }
-if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').catch(()=>{}); }
+if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(r => r.update()).catch(()=>{}); }
 start();
 })();
 </script>
