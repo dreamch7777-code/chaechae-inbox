@@ -5,15 +5,15 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex,nofollow">
 <meta name="theme-color" content="#fff4f7">
-<title>카톡 답장함</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+<title>채채 답장함</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Gaegu:wght@700&display=swap" rel="stylesheet">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon2-180.png">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/moonspam/NanumSquareRound@1.0/nanumsquareround.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="카톡 답장함">
+<meta name="apple-mobile-web-app-title" content="채채 답장함">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="icon" href="icon2-192.png">
 <style>
@@ -32,7 +32,8 @@
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);background-image:linear-gradient(180deg,#fff4f7 0%,#fbf3ff 55%,#f3f7ff 100%);background-attachment:fixed;color:var(--text);font-family:"NanumSquareRound","Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif;-webkit-text-size-adjust:100%}
 .top{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px}
-h1{font-family:'Jua',"NanumSquareRound",sans-serif;font-size:26px;font-weight:400;margin:0;color:var(--text);letter-spacing:0;display:flex;align-items:center;justify-content:center;gap:8px;grid-column:2}
+h1{font-family:'Gaegu',"NanumSquareRound",sans-serif;font-size:32px;font-weight:700;color:#e2789a;margin:0;color:letter-spacing:.5px;display:flex;align-items:center;justify-content:center;gap:6px;grid-column:2}
+h1 .hface{width:38px;height:38px;flex:none;filter:drop-shadow(0 2px 3px rgba(226,120,154,.25))}
 h1 .sp{display:inline-flex;width:28px;height:28px;border-radius:10px;background:linear-gradient(135deg,#ffd1dd,#e9d9ff);align-items:center;justify-content:center;font-size:15px}
 .live{font-size:12px;color:var(--sub);display:flex;align-items:center;gap:6px;grid-column:3;justify-self:end}
 .dot{width:8px;height:8px;border-radius:50%;background:#bbb}
@@ -287,7 +288,7 @@ function render(){
   const sel = list.find(c => c.id===state.sel);
   const keepQ = state.q;
   $('#app').innerHTML = `
-  <header><div class="top"><h1><span class="sp">♡</span>카톡 답장함</h1><div class="live"><span class="dot ${state.live==='on'?'on':state.live==='err'?'err':''}"></span>${state.live==='on'?'실시간':state.live==='err'?'연결 확인 중':'연결 중'}</div></div>
+  <header><div class="top"><h1><svg class="hface" viewBox="0 0 48 48" aria-hidden="true"><path d="M24 5C12.4 5 4 12.3 4 21.5c0 5.6 3.2 10.5 8.1 13.5L10.5 43l9-5.3c1.4.2 2.9.3 4.5.3 11.6 0 20-7.3 20-16.5S35.6 5 24 5z" fill="#ffd3df"/><ellipse cx="16.5" cy="20.5" rx="2.6" ry="3.2" fill="#5a3444"/><ellipse cx="31.5" cy="20.5" rx="2.6" ry="3.2" fill="#5a3444"/><circle cx="17.4" cy="19.4" r=".9" fill="#fff"/><circle cx="32.4" cy="19.4" r=".9" fill="#fff"/><ellipse cx="12" cy="26.5" rx="3.4" ry="2.1" fill="#ff9fb8" opacity=".75"/><ellipse cx="36" cy="26.5" rx="3.4" ry="2.1" fill="#ff9fb8" opacity=".75"/><path d="M20.5 26.5q3.5 3.4 7 0" stroke="#5a3444" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M36.5 7.5l1.2 2.6 2.8.4-2 2 .5 2.8-2.5-1.3-2.5 1.3.5-2.8-2-2 2.8-.4z" fill="#fff4b0"/></svg>답장함</h1><div class="live"><span class="dot ${state.live==='on'?'on':state.live==='err'?'err':''}"></span>${state.live==='on'?'실시간':state.live==='err'?'연결 확인 중':'연결 중'}</div></div>
   <div class="tabs">${TABS.map(([k,l]) => `<button class="tab ${state.tab===k?'on':''}" data-tab="${k}">${l}<b>${groups[k].length}</b></button>`).join('')}</div></header>
   <main>
   <div class="subbar">${notifBtn()}${state.tab==='sent' && list.length ? `<button class="link" data-act="purge">발송 모두 정리</button>`:''}</div>
@@ -295,7 +296,7 @@ function render(){
   ${sel ? card(sel) : ''}
   <div class="bar"><button class="link" data-act="logout">토큰 다시 넣기</button></div></main>`;
 }
-const APP_VER = '20261007-19';
+const APP_VER = '20261007-21';
 // 새 버전이 올라오면 새로고침 없이 자동으로 바뀜 (캐시를 피해서 새 주소로 다시 열기, 고치는 중이면 끝날 때까지 기다림)
 async function checkVer(){ try { const r = await fetch('version.txt?'+Date.now(), {cache:'no-store'}); if (r.ok) { const v = (await r.text()).trim(); if (v && v !== APP_VER && !(typeof editingNow==='function' && editingNow())) { const u = new URL(location.href); u.searchParams.set('v', v); location.replace(u.toString()); } } } catch(e){} }
 setInterval(checkVer, 15000); document.addEventListener('visibilitychange', () => { if (!document.hidden) checkVer(); }); setTimeout(checkVer, 3000);
@@ -349,13 +350,15 @@ const TONE = (() => {
   // 한 줄 안의 여러 문장(! ? ~ . 뒤 공백 기준)도 각각 변환
   const eachSentence = (line, fn) => line.split(/(?<=[!?~.…])\s+|\s+(?=[ㅠㅜㅋㅎ]{2,})|(?<=[ㅠㅜㅋㅎ]{2,})\s+/).map(seg => { const [core, tail] = splitTail(seg); return fn(core) + tail; }).join(' ');
   function convert(lines, tone) {
-    return lines.map(l => {
-      if (tone === 'banmal') return eachSentence(l, toPlain);
-      const plainFirst = eachSentence(l, c => /(용|욤|욥)(오|옹)*$/.test(c) ? toPlain(c) : c);
-      const pol = eachSentence(voc(plainFirst, true), toPolite);
-      if (tone === 'jon') return pol;
-      return eachSentence(pol, c => c.replace(/(세)?요$/, (m, se) => se ? '세용' : '용').replace(/죠$/, '죵'));   // 반존대: ~용 말투
-    });
+    const plainOf = l => eachSentence(l, toPlain);
+    const politeOf = l => eachSentence(voc(eachSentence(l, c => /(용|욤|욥)(오|옹)*$/.test(c) ? toPlain(c) : c), true), toPolite);
+    if (tone === 'banmal') return lines.map(plainOf);
+    if (tone === 'jon') return lines.map(politeOf);
+    // 반존대: 반말과 존댓말을 섞기 — 질문은 존댓말, 나머지는 반말 (질문이 없으면 마지막 말풍선만 존댓말)
+    const isQ = l => /\?|？/.test(l);
+    const anyQ = lines.some(isQ);
+    const lastPolite = l => { const pl = plainOf(l); let n = 0; eachSentence(pl, c => (/[가-힣]/.test(c) && n++, c)); let k = 0; return eachSentence(pl, c => (/[가-힣]/.test(c) && ++k === n ? politeOf(c) : c)); };
+    return lines.map((l, i) => (anyQ ? isQ(l) : i === lines.length - 1) ? lastPolite(l) : plainOf(l));
   }
   return { convert };
 })();
