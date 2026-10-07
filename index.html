@@ -77,6 +77,9 @@ details{margin-top:10px} summary{cursor:pointer;color:var(--sub);font-size:14px}
 .dedit:focus{box-shadow:0 0 0 2px var(--accent) inset}
 .dedit:empty:before{content:'여기에 입력';color:#8a8174}
 .saveinfo{font-size:12px;color:var(--sub);text-align:right;margin-top:4px}
+.tonerow{display:flex;gap:6px;margin-top:10px}
+.tone{flex:1;border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:999px;padding:8px 0;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit}
+.tone.on{background:var(--chipOn);border-color:var(--chipOn);color:var(--chipOnText)}
 .minirow{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
 .mini{border:1.5px solid var(--line);background:var(--card);color:var(--text);border-radius:999px;padding:7px 13px;font-size:13px;cursor:pointer}
 .mini:active{background:var(--chip)}
@@ -266,7 +269,7 @@ function render(){
   ${sel ? card(sel) : ''}
   <div class="bar"><button class="link" data-act="logout">토큰 다시 넣기</button></div></main>`;
 }
-const APP_VER = '20261007-5';
+const APP_VER = '20261007-6';
 setInterval(async () => { try { const r = await fetch('version.txt?'+Date.now(), {cache:'no-store'}); if (r.ok) { const v = (await r.text()).trim(); if (v && v !== APP_VER) location.reload(); } } catch(e){} }, 60000);
 const DEFAULT_AV = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="26" fill="#a9c9f5"/><circle cx="32" cy="25" r="10" fill="#e6f0fd"/><path d="M14 52c2-10 10-15 18-15s16 5 18 15z" fill="#e6f0fd"/></svg>');
 window.DEFAULT_AV = DEFAULT_AV;
@@ -274,6 +277,61 @@ function linkify(h){
   // 대화 속 링크를 누를 수 있게 (새 창으로 열림)
   return h.replace(/https?:\/\/[^\s<>"']+/g, u => { const clean = u.replace(/&amp;/g,'&'); return `<a href="${u}" target="_blank" rel="noopener noreferrer" class="lnk">${u}</a>`; });
 }
+// 말투 바꾸기: 반말 / 반존대 / 존댓말 (문장 끝 어미 기준 규칙 변환)
+const TONE = (() => {
+  const H = /[가-힣]/;
+  const splitTail = s => { // 문장 끝의 이모티콘·기호·공백 분리
+    const m = s.match(/^(.*?[가-힣ㄱ-ㅎ0-9a-zA-Z])([^가-힣ㄱ-ㅎ0-9a-zA-Z]*)$/s);
+    return m ? [m[1], m[2]] : [s, ''];
+  };
+  const LAUGH = /(ㅋ|ㅎ|ㅠ|ㅜ)+$/;
+  const norm = c => c.replace(/(요|용)(오|옹|요)+$/, '$1').replace(/니닷$/, '니다').replace(/(넵|네)+$/, m => m);
+  const toPlain = core => { // → 반말
+    core = norm(core);
+    const rules = [
+      [/(감사합니다|감사해요|감사해용|감사드려요)$/, '고마워'], [/(죄송합니다|죄송해요|죄송해용)$/, '미안해'],
+      [/주세요$/, '줘'], [/하세요$/, '해'], [/(으)?세요$/, ''], [/주세용$/, '줘'], [/합니다$/, '해'], [/했습니다$/, '했어'], [/습니다$/, '어'],
+      [/(이에요|예요|이에용|예용)$/, '야'], [/(죠|죵)$/, '지'], [/(네요|네용)$/, '네'],
+      [/(할게요|할게용|할께요)$/, '할게'], [/(게요|게용)$/, '게'], [/(까요|까용)$/, '까'],
+      [/(요|용|욥|욤)$/, ''], [/^넵+\s*!*$/, '웅'], [/^네넵$/, '웅웅'], [/^네$/, '웅'],
+    ];
+    for (const [r, t] of rules) if (r.test(core)) return core.replace(r, t);
+    return core;
+  };
+  const KEEP = /(^|\s)(미친|헐|대박|진짜|헉|허걱|오|우와|와|엥|앗|아|웅니|언니|오빠|넵+|네+|넵넵|네넵)$/;
+  const toPolite = core => { // 반말 → 존댓말
+    core = norm(core);
+    if (LAUGH.test(core) || KEEP.test(core)) return core;
+    if (/(^|\s)웅+$/.test(core)) return core.replace(/웅웅$/, '네네').replace(/웅$/, '네');
+    if (/(요|다|죠|까요|니다|용|세요)$/.test(core)) return core;
+    const rules = [
+      [/(고마워어+|고마워|고마오|고마웡|땡큐 땡큐|땡큐)$/, '고마워요'], [/(미아내애*|미안해애*|미안)$/, '미안해요'],
+      [/(이써어*|있어어*)$/, '있어요'], [/(없어어*)$/, '없어요'], [/(했어어*|해써|해쪄|해쪼)$/, '했어요'],
+      [/(봤어|봐써)$/, '봤어요'], [/(조오*|줘어*|죠오+)$/, '주세요'], [/(할게에*|할께|할겡)$/, '할게요'],
+      [/(줄게에*|줄께|줄겡)$/, '줄게요'], [/(말해줄게)$/, '말씀드릴게요'],
+      [/(었|았|했)(오|당)$/, '$1어요'], [/(이야|야아*)$/, '이에요'], [/(지이*|징)$/, '죠'], [/(쟈아*|자아*)$/, '죠'],
+      [/(해애*)$/, '해요'], [/(래)$/, '래요'], [/(네)$/, '네요'], [/(까)$/, '까요'], [/(어|아|여|워|와|봐|돼|대|게|데)$/, '$1요'],
+      [/(당|다)$/, '$1'],
+    ];
+    for (const [r, t] of rules) if (r.test(core)) return core.replace(r, t);
+    if (H.test(core.slice(-1)) && !/(요|다|죠|까|니다|용)$/.test(core)) return core + '요';
+    return core;
+  };
+  const voc = (s, polite) => polite ? s.replace(/오빠야/g, '오빠').replace(/언니야/g, '언니').replace(/웅니/g, '언니').replace(/공쥬|공주/g, '언니') : s;
+  // 한 줄 안의 여러 문장(! ? ~ . 뒤 공백 기준)도 각각 변환
+  const eachSentence = (line, fn) => line.split(/(?<=[!?~.…])\s+|\s+(?=[ㅠㅜㅋㅎ]{2,})|(?<=[ㅠㅜㅋㅎ]{2,})\s+/).map(seg => { const [core, tail] = splitTail(seg); return fn(core) + tail; }).join(' ');
+  function convert(lines, tone) {
+    return lines.map(l => {
+      if (tone === 'banmal') return eachSentence(l, toPlain);
+      const plainFirst = eachSentence(l, c => /(용|욤|욥)(오|옹)*$/.test(c) ? toPlain(c) : c);
+      const pol = eachSentence(voc(plainFirst, true), toPolite);
+      if (tone === 'jon') return pol;
+      return eachSentence(pol, c => c.replace(/(세)?요$/, (m, se) => se ? '세용' : '용').replace(/죠$/, '죵'));   // 반존대: ~용 말투
+    });
+  }
+  return { convert };
+})();
+
 function goNext(id){
   // 승인·제외하면 바로 다음 사람으로 넘어가기
   const list = (groupsNow()[state.tab]||[]).filter(c => c.id !== id);
@@ -309,6 +367,7 @@ function card(c){
   const draftHtml = !lines.length ? '' : (editable
     ? `<div class="msgs" data-dl="${esc(c.id)}">${lines.map((t,i)=>`<div class="b draft dedit" contenteditable="true" data-ed="${esc(c.id)}" data-i="${i}">${esc(t)}</div>`).join('')}</div>
        <div class="saveinfo" data-si="${esc(c.id)}">${esc(state.saveInfo[c.id]||'말풍선을 누르면 바로 고칠 수 있어요 · 자동 저장')}</div>
+       <div class="tonerow">${[['banmal','반말'],['banjon','반존대'],['jon','존댓말']].map(([k,l])=>`<button class="tone ${c.tone===k?'on':''}" data-act="tone" data-tone="${k}" data-id="${esc(c.id)}">${l}</button>`).join('')}</div>
        <div class="minirow"><button class="mini" data-act="addline" data-id="${esc(c.id)}">+ 말풍선</button><button class="mini" data-act="emotoggle" data-id="${esc(c.id)}">${state.emoOpen[c.id]?'특수 임티 접기 ♡':'특수 임티 열기 ♡'}</button></div>
        ${state.emoOpen[c.id]?emoPicker(c.id):''}`
     : `<div class="msgs">${lines.map(t=>`<div class="b draft">${esc(t)}</div>`).join('')}</div>`);
@@ -346,8 +405,8 @@ function flushSave(id){
   if (!(id in saveTimers)) return writing;
   clearTimeout(saveTimers[id]); delete saveTimers[id];
   const lines = readLines(id); const c = state.chats.find(x=>x.id===id); if (!c) return writing;
-  c.draftMessages = lines;
-  writing = writing.then(() => commit(id, x => { x.draftMessages = lines; if (x.status!=='approved') x.status='draft'; }, `고치기: ${c.name}`))
+  c.draftMessages = lines; c.toneBase = null;
+  writing = writing.then(() => commit(id, x => { x.draftMessages = lines; x.toneBase = null; if (x.status!=='approved') x.status='draft'; }, `고치기: ${c.name}`))
     .then(() => setInfo(id, `${lines.join('').length}자 · 저장됨`))
     .catch(e => { setInfo(id,'저장 실패 — 다시 고쳐 주세요'); console.error(e); })
     .finally(() => { if (state.renderPending && !editingNow()) render(); });
@@ -432,6 +491,15 @@ document.addEventListener('click', e => {
     mutate(id, x => { x.status='deleted'; }, `삭제: ${c.name}`); toast('제외했어요'); goNext(id);
   } else if (act==='edit'){
     state.editing[id] = [...((c.draftMessages&&c.draftMessages.length)?c.draftMessages:[''])]; render();
+  } else if (act==='tone'){
+    // 말투 바꾸기: 처음 초안을 기준으로 변환(여러 번 눌러도 망가지지 않게). 미리 써둔 말투가 있으면 그걸 사용
+    const tone = t.dataset.tone;
+    const cur = bubblesOf(id).length ? readLines(id) : (c.draftMessages||[]);
+    const base = (c.toneBase && c.toneBase.length) ? c.toneBase : cur;
+    const next = (c.draftVariants && c.draftVariants[tone] && c.draftVariants[tone].length) ? c.draftVariants[tone] : TONE.convert(base, tone);
+    clearTimeout(saveTimers[id]); delete saveTimers[id];
+    mutate(id, x => { if (!x.toneBase || !x.toneBase.length) x.toneBase = base; x.draftMessages = next; x.tone = tone; }, `말투(${tone}): ${c.name}`);
+    toast({banmal:'반말로 바꿨어요',banjon:'반존대로 바꿨어요',jon:'존댓말로 바꿨어요'}[tone]);
   } else if (act==='addline'){
     const box = document.querySelector(`[data-dl="${CSS.escape(id)}"]`); if (!box) return;
     const i = bubblesOf(id).length; box.insertAdjacentHTML('beforeend', `<div class="b draft dedit" contenteditable="true" data-ed="${esc(id)}" data-i="${i}"></div>`);
