@@ -38,9 +38,9 @@ h1 .sp{display:inline-flex;width:28px;height:28px;border-radius:10px;background:
 .live{font-size:12px;color:var(--sub);display:flex;align-items:center;gap:6px;grid-column:3;justify-self:end}
 .dot{width:8px;height:8px;border-radius:50%;background:#bbb}
 .dot.on{background:var(--ok)} .dot.err{background:var(--bad)}
-.tabs{display:flex;gap:6px;margin-top:10px;overflow-x:auto;scrollbar-width:none}
+.tabs{display:flex;gap:5px;margin-top:10px;overflow-x:auto;scrollbar-width:none}
 .tabs::-webkit-scrollbar{display:none}
-.tab{border:0;background:var(--chip);color:var(--text);padding:9px 14px;border-radius:999px;font-size:14px;white-space:nowrap;cursor:pointer;font-weight:700;transition:transform .1s;border:1px solid var(--line)}
+.tab{border:0;background:var(--chip);color:var(--text);padding:8px 10px;border-radius:999px;font-size:13px;white-space:nowrap;cursor:pointer;font-weight:700;transition:transform .1s;border:1px solid var(--line)}
 .tab:active{transform:scale(.96)}
 .tab.on{background:var(--chipOn);color:var(--chipOnText);border-color:var(--chipOn)}
 .tab b{margin-left:4px;font-weight:600;opacity:.8}
@@ -132,6 +132,20 @@ details{margin-top:10px} summary{cursor:pointer;color:var(--sub);font-size:14px}
 .bar{display:flex;justify-content:flex-end;margin-top:6px}
 .link{background:none;border:0;color:var(--sub);font-size:13px;text-decoration:underline;cursor:pointer;padding:4px}
 
+
+.cal{display:flex;flex-direction:column;gap:14px;margin-top:6px}
+.cday{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:14px 14px 6px;box-shadow:var(--shadow)}
+.cdh{font-family:'Gaegu',"NanumSquareRound",sans-serif;font-weight:700;font-size:21px;color:#e2789a;margin:0 2px 8px;display:flex;align-items:center;gap:8px}
+.crel{font-family:inherit;font-size:13px;font-weight:700;background:#ffe3ec;color:#c05a7c;border-radius:999px;padding:3px 10px}
+.crel.past{background:#eee;color:#888}
+.cev{display:flex;gap:12px;align-items:flex-start;padding:10px 2px;border-top:1px dashed var(--line)}
+.cday .cev:first-of-type{border-top:0}
+.ctm{flex:none;min-width:74px;font-weight:800;font-size:15px;color:var(--text)}
+.cbody{flex:1;min-width:0}
+.ctt{font-weight:800;font-size:15.5px;line-height:1.4}
+.cmeta{font-size:13px;color:var(--sub);margin-top:3px;line-height:1.4}
+.cdel{flex:none;border:1px solid var(--line);background:var(--card);color:var(--bad);border-radius:999px;padding:6px 12px;font:inherit;font-size:13px;font-weight:700;cursor:pointer}
+.cdel.sure{background:var(--bad);color:#fff;border-color:var(--bad)}
 </style>
 </head>
 <body>
@@ -208,6 +222,41 @@ async function loadSent(){
   try { state.sent = JSON.parse(await r.text()) || {}; } catch(e) { state.sent = {}; }
   return true;
 }
+state.events = []; state.evAt = 0;
+async function loadEvents(){
+  try { const r = await api('events.json', { headers:{ 'Accept':'application/vnd.github.raw+json' } }); if (r.ok) { const j = JSON.parse(await r.text()); state.events = Array.isArray(j) ? j : (j.events||[]); } } catch(e){}
+  state.evAt = Date.now();
+}
+async function delEvent(id){
+  for (let t = 0; t < 4; t++) {
+    const g = await api('events.json'); if (!g.ok) return;
+    const j = await g.json(); let cur = JSON.parse(b64dec(j.content) || '[]'); cur = Array.isArray(cur) ? cur : (cur.events||[]);
+    const next = cur.filter(e => e.id !== id);
+    const r = await api('events.json', { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ message:'달력 일정 삭제', content: b64enc(JSON.stringify(next, null, 1)), sha: j.sha }) });
+    if (r.ok) { state.events = next; render(); toast('일정을 지웠어요'); return; }
+  }
+  toast('삭제가 안 됐어요. 다시 눌러 주세요');
+}
+const WD = ['일','월','화','수','목','금','토'];
+function calHtml(){
+  const ev = (state.events||[]).filter(e => e.at).slice().sort((a,b) => String(a.at).localeCompare(String(b.at)));
+  if (!ev.length) return `<div class="pickbox"><div class="empty" style="padding:28px 0">확정된 약속이 아직 없어요 📅</div></div>`;
+  const today = new Date(); const key = d => `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`;
+  let out = '', last = '';
+  for (const e of ev) {
+    const d = new Date(e.at); const k = key(d);
+    if (k !== last) {
+      const diff = Math.round((new Date(d.getFullYear(), d.getMonth(), d.getDate()) - new Date(today.getFullYear(), today.getMonth(), today.getDate())) / 864e5);
+      const rel = diff === 0 ? '오늘' : diff === 1 ? '내일' : diff === 2 ? '모레' : diff < 0 ? '지난 일정' : `${diff}일 뒤`;
+      out += `${last ? '</div>' : ''}<div class="cday"><div class="cdh">${d.getMonth()+1}월 ${d.getDate()}일 (${WD[d.getDay()]}) <span class="crel ${diff<0?'past':''}">${rel}</span></div>`;
+      last = k;
+    }
+    const h = d.getHours(), mi = String(d.getMinutes()).padStart(2,'0');
+    const tm = e.allDay ? '하루 종일' : `${h < 12 ? '오전' : '오후'} ${h % 12 || 12}:${mi}`;
+    out += `<div class="cev"><div class="ctm">${tm}</div><div class="cbody"><div class="ctt">${esc(e.title||'약속')}</div>${e.place?`<div class="cmeta">📍 ${esc(e.place)}</div>`:''}${e.who?`<div class="cmeta">💬 ${esc(e.who)}</div>`:''}${e.note?`<div class="cmeta">${esc(e.note)}</div>`:''}</div><button class="cdel" data-act="evdel" data-ev="${esc(e.id)}">삭제</button></div>`;
+  }
+  return `<div class="cal">${out}</div></div>`;
+}
 async function loadAvatars(){
   try { const r = await api('avatars.json', { headers:{ 'Accept':'application/vnd.github.raw+json' } }); if (r.ok) state.avatars = JSON.parse(await r.text()) || {}; } catch(e){}
 }
@@ -252,7 +301,7 @@ function bucket(c){
 }
 
 // ---------- render ----------
-const TABS = [['reply','전체'],['check','확인 필요'],['inquiry','예약·문의'],['sent','발송']];
+const TABS = [['reply','전체'],['check','확인 필요'],['inquiry','예약·문의'],['sent','발송'],['cal','📅 달력']];
 state.q = ''; state.sel = ls.get('cci_sel') || null;
 function groupsNow(){
   const groups = { reply:[], check:[], inquiry:[], sent:[] };
@@ -289,14 +338,14 @@ function render(){
   const keepQ = state.q;
   $('#app').innerHTML = `
   <header><div class="top"><h1><svg class="hface" viewBox="0 0 48 48" aria-hidden="true"><path d="M24 5C12.4 5 4 12.3 4 21.5c0 5.6 3.2 10.5 8.1 13.5L10.5 43l9-5.3c1.4.2 2.9.3 4.5.3 11.6 0 20-7.3 20-16.5S35.6 5 24 5z" fill="#ffd3df"/><ellipse cx="16.5" cy="20.5" rx="2.6" ry="3.2" fill="#5a3444"/><ellipse cx="31.5" cy="20.5" rx="2.6" ry="3.2" fill="#5a3444"/><circle cx="17.4" cy="19.4" r=".9" fill="#fff"/><circle cx="32.4" cy="19.4" r=".9" fill="#fff"/><ellipse cx="12" cy="26.5" rx="3.4" ry="2.1" fill="#ff9fb8" opacity=".75"/><ellipse cx="36" cy="26.5" rx="3.4" ry="2.1" fill="#ff9fb8" opacity=".75"/><path d="M20.5 26.5q3.5 3.4 7 0" stroke="#5a3444" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M36.5 7.5l1.2 2.6 2.8.4-2 2 .5 2.8-2.5-1.3-2.5 1.3.5-2.8-2-2 2.8-.4z" fill="#fff4b0"/></svg>답장함</h1><div class="live"><span class="dot ${state.live==='on'?'on':state.live==='err'?'err':''}"></span>${state.live==='on'?'실시간':state.live==='err'?'연결 확인 중':'연결 중'}</div></div>
-  <div class="tabs">${TABS.map(([k,l]) => `<button class="tab ${state.tab===k?'on':''}" data-tab="${k}">${l}<b>${groups[k].length}</b></button>`).join('')}</div></header>
+  <div class="tabs">${TABS.map(([k,l]) => `<button class="tab ${state.tab===k?'on':''}" data-tab="${k}">${l}<b>${k==='cal' ? (state.events||[]).length : groups[k].length}</b></button>`).join('')}</div></header>
   <main>
   <div class="subbar">${notifBtn()}${state.tab==='sent' && list.length ? `<button class="link" data-act="purge">발송 모두 정리</button>`:''}</div>
-  <div class="pickbox"><input id="q" class="search" type="search" placeholder="이름 검색" value="${esc(keepQ)}" autocomplete="off"><div class="grid" id="grid">${gridHtml(list)}</div></div>
-  ${sel ? card(sel) : ''}
+  ${state.tab==='cal' ? calHtml() : `<div class="pickbox"><input id="q" class="search" type="search" placeholder="이름 검색" value="${esc(keepQ)}" autocomplete="off"><div class="grid" id="grid">${gridHtml(list)}</div></div>
+  ${sel ? card(sel) : ''}`}
   <div class="bar"><button class="link" data-act="logout">토큰 다시 넣기</button></div></main>`;
 }
-const APP_VER = '20261007-21';
+const APP_VER = '20261007-22';
 // 새 버전이 올라오면 새로고침 없이 자동으로 바뀜 (캐시를 피해서 새 주소로 다시 열기, 고치는 중이면 끝날 때까지 기다림)
 async function checkVer(){ try { const r = await fetch('version.txt?'+Date.now(), {cache:'no-store'}); if (r.ok) { const v = (await r.text()).trim(); if (v && v !== APP_VER && !(typeof editingNow==='function' && editingNow())) { const u = new URL(location.href); u.searchParams.set('v', v); location.replace(u.toString()); } } } catch(e){} }
 setInterval(checkVer, 15000); document.addEventListener('visibilitychange', () => { if (!document.hidden) checkVer(); }); setTimeout(checkVer, 3000);
@@ -574,6 +623,7 @@ document.addEventListener('click', e => {
   if (act==='emocat'){ state.emoCat = t.dataset.cat; ls.set('cci_emocat', state.emoCat); const box=document.querySelector(`[data-emo="${CSS.escape(id)}"]`); if (box) box.innerHTML = emoInner(id); return; }
   if (act==='emo'){ const e2 = t.dataset.e; if (e2) { insertEmo(id, e2); noteEmo(e2); } return; }
   if (act==='emotoggle'){ state.emoOpen[id] = !state.emoOpen[id]; flushSave(id); const card=t.closest('.card'); const box=card && card.querySelector('.emo'); if (box) box.remove(); else t.closest('.minirow').insertAdjacentHTML('afterend', emoPicker(id)); t.textContent = state.emoOpen[id]?'특수 임티 접기 ♡':'특수 임티 열기 ♡'; return; }
+  if (act==='evdel'){ if (t.dataset.sure) { t.disabled = true; t.textContent = '지우는 중…'; delEvent(t.dataset.ev); } else { t.dataset.sure = '1'; t.textContent = '정말 삭제?'; t.classList.add('sure'); setTimeout(() => { if (t.isConnected) { delete t.dataset.sure; t.textContent = '삭제'; t.classList.remove('sure'); } }, 4000); } return; }
   if (act==='logout'){ ls.del('cci_token'); token=''; render(); return; }
   if (act==='purge'){
     const ids = state.chats.filter(x => bucket(x)==='sent').map(x=>x.id); if(!ids.length) return;
@@ -631,6 +681,7 @@ async function tick(){
   try {
     const a = await loadChats(false); const b = await loadSent();
     state.live='on'; state.lastOk=Date.now();
+    if (Date.now() - state.evAt > 20000) { const n = JSON.stringify(state.events); await loadEvents(); if (JSON.stringify(state.events) !== n) render(); }
     if (a||b) render();
     else if (state._wasErr) render();
     state._wasErr = false;
@@ -644,7 +695,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden && to
 async function start(){
   render();
   try { await loadChats(true); await loadSent(); state.live='on'; } catch(e){ if (e.message==='auth'){ toast('토큰이 맞지 않아요'); ls.del('cci_token'); token=''; } else state.live='err'; }
-  render(); loadAvatars().then(render);
+  render(); loadAvatars().then(render); loadEvents().then(render);
   clearTimeout(timer); timer = setTimeout(tick, POLL_MS);
 }
 
