@@ -130,26 +130,6 @@ details{margin-top:10px} summary{cursor:pointer;color:var(--sub);font-size:14px}
 .bar{display:flex;justify-content:flex-end;margin-top:6px}
 .link{background:none;border:0;color:var(--sub);font-size:13px;text-decoration:underline;cursor:pointer;padding:4px}
 
-/* 카톡 대화방 느낌 */
-.kroom{background:#bacee0;border-radius:18px;padding:12px 10px 14px;gap:4px}
-.kroom.kold{margin:8px 0 0}
-details > .kroom{border-radius:18px 18px 0 0}
-.kday{align-self:center;background:rgba(0,0,0,.12);color:#fff;font-size:12px;padding:4px 12px;border-radius:999px;margin:8px 0 4px}
-.krow{display:flex;align-items:flex-start;gap:6px;max-width:100%}
-.krow.kme{align-self:flex-end;align-items:flex-end;justify-content:flex-end;max-width:86%}
-.krow.kthem{align-self:flex-start;max-width:90%}
-.kcol{display:flex;flex-direction:column;min-width:0}
-.kname{font-size:12.5px;color:#4a4a4a;margin:0 0 4px 2px}
-.kline{display:flex;align-items:flex-end;gap:5px}
-.kt{font-size:10.5px;color:#556677;white-space:nowrap;flex:none;margin-bottom:1px}
-.kroom .b{max-width:100%;padding:8px 11px;border-radius:14px;font-size:15px;color:#191919;box-shadow:none}
-.kroom .b.them{background:#fff;border-top-left-radius:4px}
-.kroom .b.me{background:#fee500;border-top-right-radius:4px}
-.kroom .b.media{background:transparent}
-.kroom .mav{width:38px;height:38px;border-radius:15px}
-.kroom .b a.lnk{color:#1a5fb4}
-.kroom .lchip{background:#fff}
-@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .kroom{background:#1f2933} :root:not([data-theme="light"]) .kroom .b.them{background:#3a3f44;color:#eee} :root:not([data-theme="light"]) .kroom .b.me{background:#e5cf00;color:#191919} :root:not([data-theme="light"]) .kname,:root:not([data-theme="light"]) .kt{color:#aab} }
 </style>
 </head>
 <body>
@@ -314,7 +294,7 @@ function render(){
   ${sel ? card(sel) : ''}
   <div class="bar"><button class="link" data-act="logout">토큰 다시 넣기</button></div></main>`;
 }
-const APP_VER = '20261007-16';
+const APP_VER = '20261007-17';
 // 새 버전이 올라오면 새로고침 없이 자동으로 바뀜 (캐시를 피해서 새 주소로 다시 열기, 고치는 중이면 끝날 때까지 기다림)
 async function checkVer(){ try { const r = await fetch('version.txt?'+Date.now(), {cache:'no-store'}); if (r.ok) { const v = (await r.text()).trim(); if (v && v !== APP_VER && !(typeof editingNow==='function' && editingNow())) { const u = new URL(location.href); u.searchParams.set('v', v); location.replace(u.toString()); } } } catch(e){} }
 setInterval(checkVer, 15000); document.addEventListener('visibilitychange', () => { if (!document.hidden) checkVer(); }); setTimeout(checkVer, 3000);
@@ -459,24 +439,14 @@ function card(c){
     }
     return `<div class="b ${m.sender==='me'?'me':'them'}">${who}${linkify(esc(m.text))}${tm}</div>`;
   };
-  // 카톡처럼: 프사 + 이름 + 말풍선 옆 시간, 날짜 바뀌면 날짜 줄
-  const tParts = t => { const m = String(t||'').match(/^(?:(\d+)\/(\d+)\s+)?(오전|오후)?\s*(\d+:\d+)?/); return m ? { md: m[1] ? `${m[1]}/${m[2]}` : '', hm: (m[3]||'') + (m[4] ? ' ' + m[4] : '') } : { md:'', hm:String(t||'') }; };
-  const youAv = isGroup ? null : avatarSrc(c);
   const bub = (m, i, arr) => {
-    const prev = arr[i-1], next = arr[i+1];
-    const tp = tParts(m.time), pp = prev ? tParts(prev.time) : null, np = next ? tParts(next.time) : null;
-    const day = tp.md && (!pp || pp.md !== tp.md) ? `<div class="kday">${esc(tp.md.replace(/^(\d+)\/(\d+)$/, (x, mo, d) => `${new Date().getFullYear()}년 ${mo}월 ${d}일`))}</div>` : '';
-    const me = m.sender === 'me', who = me ? '' : (m.who || (isGroup ? '' : c.name));
-    const firstRun = !prev || prev.sender !== m.sender || (!me && (prev.who||'') !== (m.who||'')) || (day !== '');
-    const lastRun = !next || next.sender !== m.sender || (!me && (next.who||'') !== (m.who||'')) || !np || np.hm !== tp.hm || (np.md && np.md !== tp.md);
-    const timeEl = lastRun && tp.hm ? `<span class="kt">${esc(tp.hm)}</span>` : '';
-    const body = bub0(m, true);
-    if (me) return `${day}<div class="krow kme">${timeEl}${body}</div>`;
-    const av = firstRun ? `<img class="mav" src="${esc(isGroup ? whoAvatar(m.who) : youAv)}" alt="" onerror="this.onerror=null;this.src=DEFAULT_AV">` : '<span class="mav sp"></span>';
-    return `${day}<div class="krow kthem">${av}<div class="kcol">${firstRun && who ? `<div class="kname">${esc(who)}</div>` : ''}<div class="kline">${body}${timeEl}</div></div></div>`;
+    const h = bub0(m);
+    if (!isGroup || m.sender === 'me') return h;
+    const prev = arr[i-1]; const first = !prev || prev.sender === 'me' || prev.who !== m.who;
+    return `<div class="grow">${first ? `<img class="mav" src="${esc(whoAvatar(m.who))}" alt="" onerror="this.onerror=null;this.src=DEFAULT_AV">` : '<span class="mav sp"></span>'}${h}</div>`;
   };
   const allM = (c.messages||[]); const recent = allM.slice(-6), older = allM.slice(-20, -6);
-  const msgs = (older.length ? `<details><summary>이전 대화 ${older.length}개 더 보기</summary><div class="msgs kroom kold">${older.map(bub).join('')}</div></details>` : '') + recent.map(bub).join('');
+  const msgs = (older.length ? `<details><summary>이전 대화 ${older.length}개 더 보기</summary><div class="msgs" style="margin-top:8px">${older.map(bub).join('')}</div></details>` : '') + recent.map(bub).join('');
   const reason = c.checkReason || (c.category==='plus' ? (c.summary||'').replace(/^확인 필요:\s*/,'') : '') || (/톡클라우드 복원 필요/.test(c.summary||'') ? '🔄 톡클라우드 복원 필요 — 최신 대화가 더 있을 수 있어요' : '');
   let status = '';
   if (c.status==='approved'){
@@ -504,7 +474,7 @@ function card(c){
     ${state.shotOpen[c.id]?`<div class="shot" data-shot="${esc(c.id)}">${state.shotUrl[c.id]?`<img src="${state.shotUrl[c.id]}" alt="카톡 화면">`:(state.shotMiss[c.id]?'<div class="st">아직 찍은 화면이 없어요 (다음 회차에 찍혀요)</div>':'<div class="st">불러오는 중…</div>')}</div>`:''}
     ${reason?`<div class="reason">${esc(reason)}</div>`:''}
     ${c.summary && !reason?`<div class="summary">${esc(c.summary)}</div>`:''}
-    ${msgs?`<div class="lbl">최근 대화</div><div class="msgs kroom">${msgs}</div>`:''}
+    ${msgs?`<div class="lbl">최근 대화</div><div class="msgs">${msgs}</div>`:''}
     ${(draftHtml)?`<div class="lbl">${c.status==='approved'?'승인한 답장':'보낼 답장'}</div>${draftHtml}`:''}
     ${status}${btns}</div>`;
 }
