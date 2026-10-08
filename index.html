@@ -90,6 +90,22 @@ details{margin-top:10px} summary{cursor:pointer;color:var(--sub);font-size:14px}
 .lscroll{width:100%;max-width:640px;max-height:80vh;overflow-y:auto;display:flex;flex-direction:column;gap:10px;align-items:center;-webkit-overflow-scrolling:touch}
 .lbox img{width:100%;height:auto;object-fit:contain;border-radius:8px;-webkit-touch-callout:default;user-select:auto}
 .lbar{display:flex;gap:10px;margin-top:16px}
+.gbox{position:fixed;inset:0;z-index:98;background:rgba(40,20,32,.45);display:flex;align-items:flex-end;justify-content:center}
+.gsheet{background:#fff;width:100%;max-width:560px;max-height:88vh;overflow:auto;border-radius:22px 22px 0 0;padding:16px 16px calc(env(safe-area-inset-bottom,0px) + 18px)}
+.ghead{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}.ghead b{font-size:17px}
+.ghead .lx{position:static;background:#f5e8ef;color:#7a5566}
+.grow2{display:flex;gap:8px}.grow2 .gq{flex:2}.grow2 .gmax{flex:1;min-width:0}
+.gbtn{width:100%;border:0;border-radius:14px;background:#ffc9d8;color:#5a3444;font:inherit;font-weight:800;font-size:16px;padding:12px;margin:10px 0;cursor:pointer}
+.gbtn2{border:1px solid #f2cbd8;background:#fff6f9;border-radius:12px;padding:10px 12px;font:inherit;cursor:pointer;text-align:left}
+.gopts{display:flex;flex-direction:column;gap:8px}
+.ghint{color:#8a7f88;font-size:13px;line-height:1.5;padding:6px 2px}.gerr{color:#d2496f}
+.ggrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.gitem{border:1px solid #f3dde6;background:#fff;border-radius:14px;padding:8px;text-align:left;display:flex;flex-direction:column;gap:3px;cursor:pointer;font:inherit}
+.gitem img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px;background:#faf3f6}
+.gb{font-size:11px;color:#a28a96}.gn{font-size:13px;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.gp{font-weight:800;font-size:14px;color:#d2496f}
+.gconf{display:flex;gap:12px;align-items:center}.gconf img{width:96px;height:96px;object-fit:cover;border-radius:12px}
+.gqty{display:block;margin-top:10px;font-size:14px}.gqty select{margin-left:8px;font:inherit;padding:4px 8px;border-radius:8px}
+
 .bdel{align-self:flex-end;border:0;border-radius:999px;background:#ff6b8b;color:#fff;font:inherit;font-size:14px;font-weight:700;padding:8px 14px;margin:-2px 0 6px;cursor:pointer}
 .favb{border:0;background:none;font-size:20px;line-height:1;color:#e8b4c4;cursor:pointer;padding:0 2px;vertical-align:-2px}.favb.on{color:#f5b301}
 .lx{position:fixed;top:calc(env(safe-area-inset-top,0px) + 14px);right:14px;z-index:100;width:44px;height:44px;border-radius:50%;border:0;background:rgba(255,255,255,.18);color:#fff;font-size:22px;font-weight:700;line-height:44px;padding:0;cursor:pointer;backdrop-filter:blur(6px)}
@@ -244,6 +260,101 @@ async function toggleFav(name){
     if (r.ok) { state.favs = cur; render(); toast(on ? '⭐ 즐찾에 넣었어요' : '즐찾에서 뺐어요'); return; }
   }
 }
+
+// ---------- 🎁 카톡 선물 (집 PC의 선물 엔진 → 카카오 선물하기 코드선물) ----------
+async function putJson(path, obj, msg){
+  for (let t = 0; t < 4; t++) {
+    const g = await api(path); let sha; if (g.ok) sha = (await g.json()).sha;
+    const r = await api(path, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ message: msg, content: b64enc(JSON.stringify(obj, null, 1)), ...(sha ? { sha } : {}) }) });
+    if (r.ok) return true;
+    await new Promise(r => setTimeout(r, 500));
+  }
+  return false;
+}
+async function giftAsk(op, extra, waitSec = 90){
+  const id = 'g' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  if (!await putJson('requests/gift.json', { id, op, at: new Date().toISOString(), ...extra }, `🎁 선물 요청: ${op}`)) throw new Error('요청을 못 보냈어요');
+  const t0 = Date.now();
+  while (Date.now() - t0 < waitSec * 1000) {
+    await new Promise(r => setTimeout(r, 2500));
+    const r = await api(`exports/${id}.json`, { headers:{ 'Accept':'application/vnd.github.raw+json' } });
+    if (r.ok) { const j = JSON.parse(await r.text()); api(`exports/${id}.json`).then(x => x.ok && x.json()).then(x => x && api(`exports/${id}.json`, { method:'DELETE', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ message:'선물 결과 정리', sha:x.sha }) })).catch(()=>{}); return j.result || {}; }
+  }
+  throw new Error('집 PC가 답이 없어요(꺼져 있거나 바빠요)');
+}
+const won = n => (Number(n)||0).toLocaleString('ko-KR') + '원';
+function openGift(c){
+  const box = document.createElement('div'); box.className = 'gbox';
+  box.innerHTML = `<div class="gsheet"><div class="ghead"><b>🎁 ${esc(c.name)}에게 선물</b><button class="lx gclose" aria-label="닫기">✕</button></div>
+    <div class="grow2"><input class="gq search" type="search" placeholder="예: 스타벅스, 케이크, 치킨" autocomplete="off"><input class="gmax search" type="number" inputmode="numeric" placeholder="최대 금액"></div>
+    <button class="gbtn gsearch">찾기</button><div class="gbody"><div class="ghint">카카오 선물하기에서 찾아요 · 결제는 채채 휴대폰에서 승인해야만 돼요</div></div></div>`;
+  document.body.appendChild(box); document.body.style.overflow = 'hidden';
+  const body = box.querySelector('.gbody'); const close = () => { box.remove(); document.body.style.overflow = ''; };
+  box.querySelector('.gclose').onclick = close; box.addEventListener('click', e => { if (e.target === box) close(); });
+  const busy = t => body.innerHTML = `<div class="ghint">⏳ ${t}</div>`;
+  const fail = e => body.innerHTML = `<div class="ghint gerr">${esc(e && e.message || e || '실패했어요')}</div>`;
+  async function search(){
+    const q = box.querySelector('.gq').value.trim(); if (!q) return toast('찾을 선물을 적어 주세요');
+    const max = Number(box.querySelector('.gmax').value) || null;
+    busy('집 PC가 카카오 선물하기에서 찾는 중… (10~30초)');
+    try {
+      const r = await giftAsk('search', { query: q, maxPrice: max, page: 0 });
+      if (!r.ok) return fail(r.error); const items = r.items || [];
+      if (!items.length) return fail('찾은 선물이 없어요');
+      body.innerHTML = `<div class="ggrid">${items.slice(0, 24).map((it, i) => `<button class="gitem" data-i="${i}"><img src="${esc(it.imageUrl||'')}" alt="" loading="lazy"><span class="gb">${esc(it.brand||'')}</span><span class="gn">${esc(it.productName||'')}</span><span class="gp">${won(it.price)}</span></button>`).join('')}</div>`;
+      body.querySelectorAll('.gitem').forEach(b => b.onclick = () => pick(items[+b.dataset.i]));
+    } catch(e){ fail(e); }
+  }
+  async function pick(it, picked = []){
+    busy('살 수 있는 옵션 확인 중…');
+    let opt = {};
+    try { opt = await giftAsk('options', { productId: it.productId, picked }, 120); } catch(e){ return fail(e); }
+    const options = (opt.options || []).map(o => o.label || o).filter(Boolean);
+    if (opt.ok === false && opt.error) return fail(opt.error);
+    if (options.length > 1) {
+      body.innerHTML = `<div class="ghint">옵션을 골라 주세요</div><div class="gopts">${options.map((o, i) => `<button class="gbtn2" data-i="${i}">${esc(o)}</button>`).join('')}</div>`;
+      body.querySelectorAll('.gbtn2').forEach(b => b.onclick = () => confirmBuy(it, [...picked, options[+b.dataset.i]]));
+      return;
+    }
+    confirmBuy(it, picked);
+  }
+  function confirmBuy(it, picked){
+    body.innerHTML = `<div class="gconf"><img src="${esc(it.imageUrl||'')}" alt=""><div><div class="gb">${esc(it.brand||'')}</div><div class="gn">${esc(it.productName||'')}</div>${picked.length?`<div class="ghint">${esc(picked.join(' / '))}</div>`:''}<div class="gp">${won(it.price)}</div></div></div>
+      <label class="gqty">수량 <select class="gqn">${[1,2,3,4,5].map(n=>`<option>${n}</option>`).join('')}</select></label>
+      <button class="gbtn gbuy">결제 요청하기</button><div class="ghint">누르면 집 PC가 카카오 '코드선물' 결제요청까지 해요. 실제 결제는 채채 휴대폰에서 승인해야만 돼요.</div>`;
+    body.querySelector('.gbuy').onclick = async ev => {
+      const b = ev.currentTarget; if (b.dataset.sure !== '1') { b.dataset.sure = '1'; b.textContent = `정말 ${won(it.price * (+body.querySelector('.gqn').value))} 결제 요청할까요?`; return; }
+      b.disabled = true; const qty = +body.querySelector('.gqn').value;
+      const purchaseId = 'inbox-' + Date.now().toString(36);
+      busy('결제요청 보내는 중…');
+      let r; try { r = await giftAsk('buy', { productId: it.productId, optionLabel: picked[picked.length-1] || '', optionLabels: picked, purchaseId, productName: it.productName, viewerId: c.name, quantity: qty, expectedTotal: it.price * qty }, 150); } catch(e){ return fail(e); }
+      if (r.ok === false && !r.accepted) return fail((r.error && (r.error.message || r.error)) || '결제요청을 못 했어요');
+      waitPaid(it, purchaseId);
+    };
+  }
+  async function waitPaid(it, purchaseId){
+    const t0 = Date.now();
+    while (Date.now() - t0 < 12 * 60 * 1000 && box.isConnected) {
+      busy('📱 휴대폰에서 카카오페이 결제를 승인해 주세요… (승인하면 자동으로 코드를 받아와요)');
+      let r = {}; try { r = await giftAsk('recheck', { purchaseId }, 90); } catch(e){}
+      if (r.status === 'paid' && (r.link || r.code)) {
+        const links = (r.codes && r.codes.length ? r.codes : [{ code: r.code, link: r.link }]).map(x => x.link || x.code);
+        const cur = readLines(c.id); const lines = [...(cur.length ? cur : (c.draftMessages || []))];
+        lines.push(`${it.productName} 선물 보냈어 !! 🎁`, ...links);
+        c.draftMessages = lines; mutate(c.id, x => { x.draftMessages = lines; x.toneBase = null; if (x.status !== 'approved') x.status = 'draft'; }, `🎁 선물 링크 넣기: ${c.name}`);
+        body.innerHTML = `<div class="ghint">✅ 선물 코드를 받았어요! 답장 초안 맨 아래에 선물 링크를 넣었어요. 확인하고 '승인하고 발송'을 누르면 카톡으로 가요.</div><button class="gbtn gok">확인</button>`;
+        body.querySelector('.gok').onclick = () => { close(); render(); };
+        return;
+      }
+      if (['failed','cancelled','not_paid'].includes(r.status)) return fail(`결제가 안 됐어요 (${r.status}) ${r.error ? (r.error.message || r.error) : ''}`);
+      await new Promise(r => setTimeout(r, 12000));
+    }
+    if (box.isConnected) fail('결제 확인 시간이 지났어요. 결제했으면 잠시 뒤 다시 열어 확인해 주세요.');
+  }
+  box.querySelector('.gsearch').onclick = search;
+  box.querySelector('.gq').addEventListener('keydown', e => { if (e.key === 'Enter') search(); });
+  setTimeout(() => box.querySelector('.gq').focus(), 50);
+}
 state.events = []; state.evAt = 0;
 async function loadEvents(){
   try { const r = await api('events.json', { headers:{ 'Accept':'application/vnd.github.raw+json' } }); if (r.ok) { const j = JSON.parse(await r.text()); state.events = Array.isArray(j) ? j : (j.events||[]); } } catch(e){}
@@ -367,7 +478,7 @@ function render(){
   ${sel ? card(sel) : ''}`}
   <div class="bar"><button class="link" data-act="logout">토큰 다시 넣기</button></div></main>`;
 }
-const APP_VER = '20261008-04';
+const APP_VER = '20261008-05';
 // 새 버전이 올라오면 새로고침 없이 자동으로 바뀜 (캐시를 피해서 새 주소로 다시 열기, 고치는 중이면 끝날 때까지 기다림)
 async function checkVer(){ try { const r = await fetch('version.txt?'+Date.now(), {cache:'no-store'}); if (r.ok) { const v = (await r.text()).trim(); if (v && v !== APP_VER && !(typeof editingNow==='function' && editingNow())) { const u = new URL(location.href); u.searchParams.set('v', v); location.replace(u.toString()); } } } catch(e){} }
 setInterval(checkVer, 15000); document.addEventListener('visibilitychange', () => { if (!document.hidden) checkVer(); }); setTimeout(checkVer, 3000);
@@ -552,7 +663,7 @@ function card(c){
     ? `<div class="msgs" data-dl="${esc(c.id)}">${lines.map((t,i)=>`<div class="b draft dedit" contenteditable="true" data-ed="${esc(c.id)}" data-i="${i}">${esc(t)}</div>`).join('')}</div>
        <div class="saveinfo" data-si="${esc(c.id)}">${esc(state.saveInfo[c.id]||'말풍선을 누르면 바로 고칠 수 있어요 · 자동 저장')}</div>
        <div class="tonerow">${[['banmal','반말'],['banjon','반존대'],['jon','존댓말']].map(([k,l])=>`<button class="tone ${c.tone===k?'on':''}" data-act="tone" data-tone="${k}" data-id="${esc(c.id)}">${l}</button>`).join('')}</div>
-       <div class="minirow"><button class="mini" data-act="addline" data-id="${esc(c.id)}">+ 말풍선</button><button class="mini" data-act="emotoggle" data-id="${esc(c.id)}">${state.emoOpen[c.id]?'특수 임티 접기 ♡':'특수 임티 열기 ♡'}</button></div>
+       <div class="minirow"><button class="mini" data-act="addline" data-id="${esc(c.id)}">+ 말풍선</button><button class="mini" data-act="emotoggle" data-id="${esc(c.id)}">${state.emoOpen[c.id]?'특수 임티 접기 ♡':'특수 임티 열기 ♡'}</button><button class="mini" data-act="gift" data-id="${esc(c.id)}">🎁 선물</button></div>
        ${state.emoOpen[c.id]?emoPicker(c.id):''}`
     : `<div class="msgs">${lines.map(t=>`<div class="b draft">${esc(t)}</div>`).join('')}</div>`);
   let btns = '';
@@ -676,6 +787,7 @@ document.addEventListener('click', e => {
   }
   if (!c) return;
   if (act==='fav'){ toggleFav(c.name); return; }
+  if (act==='gift'){ flushSave(c.id); openGift(c); return; }
   if (act==='approve'){
     if (c.status === 'approved' && ['sent','sending'].includes(sendState(c))) { toast('이미 보낸 답장이에요'); return; }   // 이미 보낸 건 다시 못 보냄
     const domLines = bubblesOf(id).length ? readLines(id) : null;
