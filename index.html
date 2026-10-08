@@ -100,6 +100,13 @@ details{margin-top:10px} summary{cursor:pointer;color:var(--sub);font-size:14px}
 .gbtn{width:100%;border:0;border-radius:14px;background:#ffc9d8;color:#5a3444;font:inherit;font-weight:800;font-size:16px;padding:12px;margin:10px 0;cursor:pointer}
 .gbtn2{border:1px solid #f2cbd8;background:#fff6f9;border-radius:12px;padding:10px 12px;font:inherit;cursor:pointer;text-align:left}
 .gopts{display:flex;flex-direction:column;gap:8px}
+.gstep{display:flex;gap:12px;align-items:flex-start;background:#fff7fa;border:1px solid #f6dfe8;border-radius:16px;padding:12px;margin-bottom:8px}
+.gnum{flex:none;width:26px;height:26px;border-radius:50%;background:#ff8fb1;color:#fff;font-weight:800;font-size:14px;display:flex;align-items:center;justify-content:center}
+.gstep .gt{font-weight:800;font-size:15px;color:#5a3444;margin:3px 0 6px}.gstep .gs{font-size:13px;color:#9a8290;line-height:1.45}
+.gstep .gbtn{margin:4px 0 0}.gstep .grow2{margin-top:2px}
+.gmain{background:#ff8fb1;color:#fff}
+.gmore{margin:6px 0 4px;border:1px dashed #ead3dd;border-radius:14px;padding:4px 12px}.gmore summary{cursor:pointer;color:#8a6b7a;font-size:14px;font-weight:700;padding:8px 0;list-style:none}.gmore summary::-webkit-details-marker{display:none}
+.gmore .grow2{margin:4px 0 10px}.gstat{margin-top:8px;border-radius:14px;background:#f8f4f6;padding:4px 10px;min-height:20px}
 .gtabs{display:flex;gap:6px;margin-bottom:10px}.gtab{flex:1;border:1px solid #f2cbd8;background:#fff;border-radius:999px;padding:9px;font:inherit;font-weight:700;color:#8a6b7a;cursor:pointer}.gtab.on{background:#ffc9d8;color:#5a3444;border-color:#ffc9d8}
 .gbtn3{flex:1;border:1px solid #f2cbd8;background:#fff6f9;border-radius:12px;padding:10px 8px;font:inherit;font-size:14px;font-weight:700;color:#5a3444;cursor:pointer;white-space:nowrap}
 .ghint{color:#8a7f88;font-size:13px;line-height:1.5;padding:6px 2px}.gerr{color:#d2496f}
@@ -128,12 +135,12 @@ details{margin-top:10px} summary{cursor:pointer;color:var(--sub);font-size:14px}
 .shotrow{margin-top:10px}
 .shot{margin-top:8px;border-radius:16px;overflow:hidden;border:1px solid var(--line);background:#b2c7d9}
 .shot img{display:block;width:100%;height:auto}
-.tonerow{display:flex;gap:6px;margin-top:10px}
-.tone{flex:1;border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:999px;padding:8px 0;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit}
-.tone.on{background:var(--chipOn);border-color:var(--chipOn);color:var(--chipOnText)}
-.minirow{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
-.mini{border:1.5px solid var(--line);background:var(--card);color:var(--text);border-radius:999px;padding:7px 13px;font-size:13px;cursor:pointer}
-.mini:active{background:var(--chip)}
+.tonerow{display:flex;gap:3px;margin-top:12px;background:#f6eef2;border-radius:999px;padding:3px}
+.tone{flex:1;border:0;background:transparent;color:#9a8290;border-radius:999px;padding:7px 0;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
+.tone.on{background:#fff;color:#5a3444;box-shadow:0 1px 4px rgba(120,60,90,.15)}
+.minirow{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px}
+.mini{border:0;background:#fbf5f8;color:#6d5262;border-radius:12px;padding:8px 0;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap}
+.mini:active,.mini.on{background:#f6e3ec}
 .emo{margin-top:8px;border:1px solid var(--line);border-radius:16px;background:var(--bg);padding:10px}
 .ecats{display:flex;flex-wrap:nowrap;gap:6px;margin:0 -10px 10px;padding:2px 10px 8px;overflow-x:auto;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity}
 .ecats .ecat{flex:none;scroll-snap-align:start}
@@ -302,22 +309,19 @@ const won = n => (Number(n)||0).toLocaleString('ko-KR') + '원';
 function openGift(c){
   const box = document.createElement('div'); box.className = 'gbox';
   box.innerHTML = `<div class="gsheet"><div class="ghead"><b>🎁 ${esc(c.name)}에게 선물</b><button class="lx gclose" aria-label="닫기">✕</button></div>
-    <div class="gtabs"><button class="gtab on" data-gt="kakao">카카오에서 고르기</button><button class="gtab" data-gt="search">검색</button></div>
-    <div class="gpane" data-gp="kakao">
-      <button class="gbtn gopen">📱 카카오 선물하기 열기</button>
-      <div class="ghint">상품을 고르면 [공유 → 링크 복사] 하고 여기로 돌아와 주세요</div>
-      <div class="grow2"><input class="glink search" placeholder="복사한 상품 링크 붙여넣기" autocomplete="off"><button class="gbtn3 gpaste">가져오기</button></div>
-      <div class="grow2" style="margin-top:8px"><button class="gbtn3 gpc">💻 PC 크롬에 띄우기</button><button class="gbtn3 gcur">PC에서 보는 상품 가져오기</button></div>
-    </div>
-    <div class="gpane" data-gp="search" hidden>
-      <div class="grow2"><input class="gq search" type="search" placeholder="예: 스타벅스, 케이크, 치킨" autocomplete="off"><input class="gmax search" type="number" inputmode="numeric" placeholder="최대 금액"></div>
-      <button class="gbtn gsearch">찾기</button>
-    </div>
-    <div class="gbody"><div class="ghint">고른 상품은 제가 결제 직전(결제요청)까지 해 두고, 채채는 휴대폰에서 결제만 승인하면 돼요</div></div></div>`;
+    <div class="gstep"><div class="gnum">1</div><div style="flex:1"><div class="gt">카카오 선물하기에서 고르기</div><button class="gbtn gmain gopen">📱 카카오 선물하기 열기</button></div></div>
+    <div class="gstep"><div class="gnum">2</div><div style="flex:1"><div class="gt">상품 링크 복사</div><div class="gs">고른 상품에서 <b>공유 → 링크 복사</b> 누르고 여기로 돌아오면 자동으로 가져와요</div></div></div>
+    <div class="gstep"><div class="gnum">3</div><div style="flex:1"><div class="gt">자동으로 안 되면 붙여넣기</div><div class="grow2"><input class="glink search" placeholder="링크 붙여넣기" autocomplete="off"><button class="gbtn3 gpaste">가져오기</button></div></div></div>
+    <details class="gmore"><summary>🔍 이름으로 찾기</summary>
+      <div class="grow2"><input class="gq search" type="search" placeholder="예: 스타벅스, 케이크" autocomplete="off"><input class="gmax search" type="number" inputmode="numeric" placeholder="최대 금액"></div>
+      <button class="gbtn gsearch" style="margin-top:0">찾기</button></details>
+    <details class="gmore"><summary>💻 PC로 고르기</summary>
+      <div class="grow2"><button class="gbtn3 gpc">① PC 크롬에 띄우기</button><button class="gbtn3 gcur">② 보고 있는 상품 가져오기</button></div></details>
+    <div class="gbody gstat"><div class="ghint">💳 결제 직전까지는 제가 하고, 채채는 휴대폰에서 승인만 하면 돼요</div></div></div>`;
   document.body.appendChild(box); document.body.style.overflow = 'hidden';
   const body = box.querySelector('.gbody'); const close = () => { box.remove(); document.body.style.overflow = ''; };
   box.querySelector('.gclose').onclick = close; box.addEventListener('click', e => { if (e.target === box) close(); });
-  const busy = t => body.innerHTML = `<div class="ghint">⏳ ${t}</div>`;
+  const busy = t => { body.innerHTML = `<div class="ghint">⏳ ${t}</div>`; body.scrollIntoView({block:'nearest',behavior:'smooth'}); };
   const fail = e => body.innerHTML = `<div class="ghint gerr">${esc(e && e.message || e || '실패했어요')}</div>`;
   async function search(){
     const q = box.querySelector('.gq').value.trim(); if (!q) return toast('찾을 선물을 적어 주세요');
@@ -377,7 +381,6 @@ function openGift(c){
     }
     if (box.isConnected) fail('결제 확인 시간이 지났어요. 결제했으면 잠시 뒤 다시 열어 확인해 주세요.');
   }
-  box.querySelectorAll('.gtab').forEach(t => t.onclick = () => { box.querySelectorAll('.gtab').forEach(x => x.classList.toggle('on', x === t)); box.querySelectorAll('.gpane').forEach(p => p.hidden = p.dataset.gp !== t.dataset.gt); });
   const takeProduct = r => { if (!r || r.ok === false || !r.item) return fail((r && r.error) || '상품을 못 찾았어요'); if (r.available === false) return fail(r.reason || '지금은 살 수 없는 상품이에요'); pick(r.item); };
   box.querySelector('.gopen').onclick = () => window.open('https://gift.kakao.com/home', '_blank', 'noopener');
   box.querySelector('.gpaste').onclick = async () => {
@@ -515,7 +518,7 @@ function render(){
   ${sel ? card(sel) : ''}`}
   <div class="bar"><button class="link" data-act="logout">토큰 다시 넣기</button></div></main>`;
 }
-const APP_VER = '20261008-08';
+const APP_VER = '20261008-09';
 // 새 버전이 올라오면 새로고침 없이 자동으로 바뀜 (캐시를 피해서 새 주소로 다시 열기, 고치는 중이면 끝날 때까지 기다림)
 async function checkVer(){ try { const r = await fetch('version.txt?'+Date.now(), {cache:'no-store'}); if (r.ok) { const v = (await r.text()).trim(); if (v && v !== APP_VER && !(typeof editingNow==='function' && editingNow())) { const u = new URL(location.href); u.searchParams.set('v', v); location.replace(u.toString()); } } } catch(e){} }
 setInterval(checkVer, 15000); document.addEventListener('visibilitychange', () => { if (!document.hidden) checkVer(); }); setTimeout(checkVer, 3000);
@@ -700,7 +703,7 @@ function card(c){
     ? `<div class="msgs" data-dl="${esc(c.id)}">${lines.map((t,i)=>`<div class="b draft dedit" contenteditable="true" data-ed="${esc(c.id)}" data-i="${i}">${esc(t)}</div>`).join('')}</div>
        <div class="saveinfo" data-si="${esc(c.id)}">${esc(state.saveInfo[c.id]||'말풍선을 누르면 바로 고칠 수 있어요 · 자동 저장')}</div>
        <div class="tonerow">${[['banmal','반말'],['banjon','반존대'],['jon','존댓말']].map(([k,l])=>`<button class="tone ${c.tone===k?'on':''}" data-act="tone" data-tone="${k}" data-id="${esc(c.id)}">${l}</button>`).join('')}</div>
-       <div class="minirow"><button class="mini" data-act="addline" data-id="${esc(c.id)}">+ 말풍선</button><button class="mini" data-act="emotoggle" data-id="${esc(c.id)}">${state.emoOpen[c.id]?'특수 임티 접기 ♡':'특수 임티 열기 ♡'}</button><button class="mini" data-act="gift" data-id="${esc(c.id)}">🎁 선물하기</button></div>
+       <div class="minirow"><button class="mini" data-act="addline" data-id="${esc(c.id)}">＋ 말풍선</button><button class="mini ${state.emoOpen[c.id]?'on':''}" data-act="emotoggle" data-id="${esc(c.id)}">${state.emoOpen[c.id]?'♡ 임티 닫기':'♡ 임티'}</button><button class="mini" data-act="gift" data-id="${esc(c.id)}">🎁 선물</button></div>
        ${state.emoOpen[c.id]?emoPicker(c.id):''}`
     : `<div class="msgs">${lines.map(t=>`<div class="b draft">${esc(t)}</div>`).join('')}</div>`);
   let btns = '';
@@ -815,7 +818,7 @@ document.addEventListener('click', e => {
   if (act==='notif'){ Notification.requestPermission().then(p => { toast(p==='granted'?'알림 켰어요 🔔':'알림이 꺼져 있어요'); render(); }); return; }
   if (act==='emocat'){ state.emoCat = t.dataset.cat; ls.set('cci_emocat', state.emoCat); const box=document.querySelector(`[data-emo="${CSS.escape(id)}"]`); if (box) box.innerHTML = emoInner(id); return; }
   if (act==='emo'){ const e2 = t.dataset.e; if (e2) { insertEmo(id, e2); noteEmo(e2); } return; }
-  if (act==='emotoggle'){ state.emoOpen[id] = !state.emoOpen[id]; flushSave(id); const card=t.closest('.card'); const box=card && card.querySelector('.emo'); if (box) box.remove(); else t.closest('.minirow').insertAdjacentHTML('afterend', emoPicker(id)); t.textContent = state.emoOpen[id]?'특수 임티 접기 ♡':'특수 임티 열기 ♡'; return; }
+  if (act==='emotoggle'){ state.emoOpen[id] = !state.emoOpen[id]; flushSave(id); const card=t.closest('.card'); const box=card && card.querySelector('.emo'); if (box) box.remove(); else t.closest('.minirow').insertAdjacentHTML('afterend', emoPicker(id)); t.textContent = state.emoOpen[id]?'♡ 임티 닫기':'♡ 임티'; t.classList.toggle('on', !!state.emoOpen[id]); return; }
   if (act==='evdel'){ if (t.dataset.sure) { t.disabled = true; t.textContent = '지우는 중…'; delEvent(t.dataset.ev); } else { t.dataset.sure = '1'; t.textContent = '정말 삭제?'; t.classList.add('sure'); setTimeout(() => { if (t.isConnected) { delete t.dataset.sure; t.textContent = '삭제'; t.classList.remove('sure'); } }, 4000); } return; }
   if (act==='logout'){ ls.del('cci_token'); token=''; render(); return; }
   if (act==='purge'){
