@@ -252,6 +252,8 @@ details{margin-top:10px} summary{cursor:pointer;color:var(--sub);font-size:14px}
 .gadd{margin-top:4px;border:0;border-radius:10px;background:#fde9f1;color:#d9658f;font-weight:800;padding:7px 0;font-size:13px}
 div.gitem{cursor:default}
 .evnote{margin:8px 0 2px;padding:8px 10px;border-radius:12px;background:#fdf3f7;color:#8a5a70;font-size:13px}.evnote b{color:#5a3444}
+.bimg{padding:4px!important;max-width:70%}.bimg img{display:block;width:100%;max-width:240px;border-radius:12px;min-height:60px;background:#fbeef3}
+.minirow{grid-template-columns:repeat(4,1fr)!important}
 </style>
 </head>
 <body>
@@ -680,7 +682,7 @@ function render(){
   ${sel ? card(sel) : ''}`}
   <div class="bar"><button class="link" data-act="logout">토큰 다시 넣기</button></div></main>`;
 }
-const APP_VER = '20261008-15';
+const APP_VER = '20261009-01';
 // 새 버전이 올라오면 새로고침 없이 자동으로 바뀜 (캐시를 피해서 새 주소로 다시 열기, 고치는 중이면 끝날 때까지 기다림)
 async function checkVer(){ try { const r = await fetch('version.txt?'+Date.now(), {cache:'no-store'}); if (r.ok) { const v = (await r.text()).trim(); if (v && v !== APP_VER && !(typeof editingNow==='function' && editingNow())) { const u = new URL(location.href); u.searchParams.set('v', v); location.replace(u.toString()); } } } catch(e){} }
 setInterval(checkVer, 15000); document.addEventListener('visibilitychange', () => { if (!document.hidden) checkVer(); }); setTimeout(checkVer, 3000);
@@ -862,12 +864,12 @@ function card(c){
   const editable = c.status!=='approved' && !done;
   const lines = draft.length ? draft : (editable ? [''] : []);
   const draftHtml = !lines.length ? '' : (editable
-    ? `<div class="msgs" data-dl="${esc(c.id)}">${lines.map((t,i)=>`<div class="b draft dedit" contenteditable="true" data-ed="${esc(c.id)}" data-i="${i}">${esc(t)}</div>`).join('')}</div>
+    ? `<div class="msgs" data-dl="${esc(c.id)}">${lines.map((t,i)=> t.startsWith('📷사진:') ? `<div class="b draft dedit bimg" data-ed="${esc(c.id)}" data-i="${i}" data-line="${esc(t)}"><img data-out="${esc(t.slice(4))}" alt="사진"></div>` : `<div class="b draft dedit" contenteditable="true" data-ed="${esc(c.id)}" data-i="${i}">${esc(t)}</div>`).join('')}</div>
        <div class="saveinfo" data-si="${esc(c.id)}">${esc(state.saveInfo[c.id]||'말풍선을 누르면 바로 고칠 수 있어요 · 자동 저장')}</div>
        <div class="tonerow">${[['banmal','반말'],['banjon','반존대'],['jon','존댓말']].map(([k,l])=>`<button class="tone ${c.tone===k?'on':''}" data-act="tone" data-tone="${k}" data-id="${esc(c.id)}">${l}</button>`).join('')}</div>
-       <div class="minirow"><button class="mini" data-act="addline" data-id="${esc(c.id)}">＋ 말풍선</button><button class="mini ${state.emoOpen[c.id]?'on':''}" data-act="emotoggle" data-id="${esc(c.id)}">${state.emoOpen[c.id]?'♡ 임티 닫기':'♡ 임티'}</button><button class="mini" data-act="gift" data-id="${esc(c.id)}">🎁 선물</button></div>
+       <div class="minirow"><button class="mini" data-act="addline" data-id="${esc(c.id)}">＋ 말풍선</button><button class="mini ${state.emoOpen[c.id]?'on':''}" data-act="emotoggle" data-id="${esc(c.id)}">${state.emoOpen[c.id]?'♡ 임티 닫기':'♡ 임티'}</button><button class="mini" data-act="photo" data-id="${esc(c.id)}">📷 사진</button><button class="mini" data-act="gift" data-id="${esc(c.id)}">🎁 선물</button></div>
        ${state.emoOpen[c.id]?emoPicker(c.id):''}`
-    : `<div class="msgs">${lines.map(t=>`<div class="b draft">${esc(t)}</div>`).join('')}</div>`);
+    : `<div class="msgs">${lines.map(t=> t.startsWith('📷사진:') ? `<div class="b draft bimg"><img data-out="${esc(t.slice(4))}" alt="사진"></div>` : `<div class="b draft">${esc(t)}</div>`).join('')}</div>`);
   let btns = '';
   if (c.status==='approved' && s!=='sent' && s!=='sending') btns = `<div class="btns" style="grid-template-columns:1fr 1fr"><button class="btn" data-act="unapprove" data-id="${esc(c.id)}">승인 취소</button><button class="btn del" data-act="delete" data-id="${esc(c.id)}">이번만 제외</button></div>`;
   else if (done) btns = `<div class="btns" style="grid-template-columns:1fr"><button class="btn del" data-act="delete" data-id="${esc(c.id)}">이번만 제외</button></div>`;
@@ -907,8 +909,26 @@ document.addEventListener('pointerdown', e => {
 });
 document.addEventListener('pointermove', e => { if (pressXY && Math.hypot(e.clientX - pressXY[0], e.clientY - pressXY[1]) > 10) clearTimeout(pressT); });
 ['pointerup','pointercancel'].forEach(t => document.addEventListener(t, () => clearTimeout(pressT)));
+async function shrinkPhoto(file){
+  // 카톡으로 보내기 좋게 긴 쪽 1600px · JPEG 로 줄여서 base64
+  const url = URL.createObjectURL(file);
+  const img = await new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = url; });
+  const k = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight));
+  const cv = document.createElement('canvas'); cv.width = Math.round(img.naturalWidth * k); cv.height = Math.round(img.naturalHeight * k);
+  cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height); URL.revokeObjectURL(url);
+  return cv.toDataURL('image/jpeg', 0.86).split(',')[1];
+}
+const outCache = {};
+async function loadOutImgs(){
+  for (const im of document.querySelectorAll('img[data-out]:not([src])')) {
+    const p = im.dataset.out;
+    if (!outCache[p]) { try { const r = await api(p, { headers:{ 'Accept':'application/vnd.github.raw+json' } }); if (r.ok) outCache[p] = URL.createObjectURL(await r.blob()); } catch(e){} }
+    if (outCache[p]) im.src = outCache[p];
+  }
+}
+setInterval(loadOutImgs, 1500);
 function bubblesOf(id){ return [...document.querySelectorAll(`.dedit[data-ed="${CSS.escape(id)}"]`)]; }
-function readLines(id){ return bubblesOf(id).map(el => el.innerText.replace(/ /g,' ').replace(/\n+$/,'').trim()).filter(Boolean); }
+function readLines(id){ return bubblesOf(id).map(el => el.dataset.line ? el.dataset.line : el.innerText.replace(/ /g,' ').replace(/\n+$/,'').trim()).filter(Boolean); }
 function setInfo(id, t){ state.saveInfo[id]=t; const el=document.querySelector(`[data-si="${CSS.escape(id)}"]`); if (el) el.textContent=t; }
 function scheduleSave(id){
   const n = readLines(id).join('').length; setInfo(id, `${n}자 · 저장 중…`);
@@ -1022,13 +1042,30 @@ document.addEventListener('click', e => {
     const tone = t.dataset.tone;
     const cur = bubblesOf(id).length ? readLines(id) : (c.draftMessages||[]);
     const base = (c.toneBase && c.toneBase.length) ? c.toneBase : cur;
-    const next = (c.draftVariants && c.draftVariants[tone] && c.draftVariants[tone].length) ? c.draftVariants[tone] : TONE.convert(base, tone);
+    const next = (c.draftVariants && c.draftVariants[tone] && c.draftVariants[tone].length) ? c.draftVariants[tone] : (() => { const txt = base.filter(l => !l.startsWith('📷사진:')); const conv = TONE.convert(txt, tone); let k = 0; return base.map(l => l.startsWith('📷사진:') ? l : conv[k++]).filter(v => v != null); })();
     clearTimeout(saveTimers[id]); delete saveTimers[id];
     mutate(id, x => { if (!x.toneBase || !x.toneBase.length) x.toneBase = base; x.draftMessages = next; x.tone = tone; }, `말투(${tone}): ${c.name}`);
     toast({banmal:'반말로 바꿨어요',banjon:'반존대로 바꿨어요',jon:'존댓말로 바꿨어요'}[tone]);
   } else if (act==='delline'){
     const prev = t.previousElementSibling; t.remove();
     if (prev && prev.classList.contains('dedit')) { prev.remove(); bubblesOf(id).forEach((el, k) => el.dataset.i = k); scheduleSave(id); toast('말풍선을 지웠어요'); }
+  } else if (act==='photo'){
+    const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*';
+    inp.onchange = async () => {
+      const f = inp.files && inp.files[0]; if (!f) return;
+      toast('📷 사진 올리는 중…');
+      try {
+        const b64 = await shrinkPhoto(f);
+        const path = `outbox/${id}-${Date.now().toString(36)}.jpg`;
+        const r = await api(path, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ message:`사진 올림: ${c.name}`, content: b64 }) });
+        if (!r.ok) throw new Error('업로드 실패');
+        outCache[path] = URL.createObjectURL(f);
+        const cur = readLines(id); const lines = [...(cur.length ? cur : (c.draftMessages||[])), '📷사진:' + path];
+        c.draftMessages = lines; mutate(id, x => { x.draftMessages = lines; x.toneBase = null; if (x.status !== 'approved') x.status = 'draft'; }, `사진 추가: ${c.name}`);
+        toast('사진을 넣었어요 — 승인하면 카톡으로 같이 가요');
+      } catch(e){ toast('사진을 못 올렸어요: ' + (e.message || e)); }
+    };
+    inp.click();
   } else if (act==='addline'){
     const box = document.querySelector(`[data-dl="${CSS.escape(id)}"]`); if (!box) return;
     const i = bubblesOf(id).length; box.insertAdjacentHTML('beforeend', `<div class="b draft dedit" contenteditable="true" data-ed="${esc(id)}" data-i="${i}"></div>`);
