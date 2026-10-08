@@ -90,6 +90,7 @@ details{margin-top:10px} summary{cursor:pointer;color:var(--sub);font-size:14px}
 .lscroll{width:100%;max-width:640px;max-height:80vh;overflow-y:auto;display:flex;flex-direction:column;gap:10px;align-items:center;-webkit-overflow-scrolling:touch}
 .lbox img{width:100%;height:auto;object-fit:contain;border-radius:8px;-webkit-touch-callout:default;user-select:auto}
 .lbar{display:flex;gap:10px;margin-top:16px}
+.bdel{align-self:flex-end;border:0;border-radius:999px;background:#ff6b8b;color:#fff;font:inherit;font-size:14px;font-weight:700;padding:8px 14px;margin:-2px 0 6px;cursor:pointer}
 .favb{border:0;background:none;font-size:20px;line-height:1;color:#e8b4c4;cursor:pointer;padding:0 2px;vertical-align:-2px}.favb.on{color:#f5b301}
 .lx{position:fixed;top:calc(env(safe-area-inset-top,0px) + 14px);right:14px;z-index:100;width:44px;height:44px;border-radius:50%;border:0;background:rgba(255,255,255,.18);color:#fff;font-size:22px;font-weight:700;line-height:44px;padding:0;cursor:pointer;backdrop-filter:blur(6px)}
 .lbar button{border:0;border-radius:999px;padding:12px 22px;font:inherit;font-size:16px;font-weight:800;cursor:pointer}
@@ -366,7 +367,7 @@ function render(){
   ${sel ? card(sel) : ''}`}
   <div class="bar"><button class="link" data-act="logout">토큰 다시 넣기</button></div></main>`;
 }
-const APP_VER = '20261008-03';
+const APP_VER = '20261008-04';
 // 새 버전이 올라오면 새로고침 없이 자동으로 바뀜 (캐시를 피해서 새 주소로 다시 열기, 고치는 중이면 끝날 때까지 기다림)
 async function checkVer(){ try { const r = await fetch('version.txt?'+Date.now(), {cache:'no-store'}); if (r.ok) { const v = (await r.text()).trim(); if (v && v !== APP_VER && !(typeof editingNow==='function' && editingNow())) { const u = new URL(location.href); u.searchParams.set('v', v); location.replace(u.toString()); } } } catch(e){} }
 setInterval(checkVer, 15000); document.addEventListener('visibilitychange', () => { if (!document.hidden) checkVer(); }); setTimeout(checkVer, 3000);
@@ -379,9 +380,14 @@ function linkify(h){
 // 말투 바꾸기: 반말 / 반존대 / 존댓말 (문장 끝 어미 기준 규칙 변환)
 const TONE = (() => {
   const H = /[가-힣]/;
-  const splitTail = s => { // 문장 끝의 이모티콘·기호·공백 분리
-    const m = s.match(/^(.*?[가-힣ㄱ-ㅎ0-9a-zA-Z])([^가-힣ㄱ-ㅎ0-9a-zA-Z]*)$/s);
-    return m ? [m[1], m[2]] : [s, ''];
+  const splitTail = s => { // 문장 끝의 이모티콘·기호·공백·웃음(ㅋㅋ 흐흐 헤헤) 분리
+    let core = s, tail = '';
+    for (let k = 0; k < 6; k++) {
+      const m = core.match(/^(.*?)(\s*(?:[ㅋㅎㅠㅜ]+|(?:흐|헤|히|크|키|하하){2,}|[^가-힣ㄱ-ㅎ0-9a-zA-Z\s]+)\s*)$/s);
+      if (!m || !m[1].trim()) break;
+      core = m[1]; tail = m[2] + tail;
+    }
+    return [core, tail];
   };
   const LAUGH = /(ㅋ|ㅎ|ㅠ|ㅜ)+$/;
   const norm = c => c.replace(/(요|용)(오|옹|요)+$/, '$1').replace(/니닷$/, '니다').replace(/(넵|네)+$/, m => m);
@@ -400,6 +406,8 @@ const TONE = (() => {
   const KEEP = /(^|\s)(미친|헐|대박|진짜|헉|허걱|오|우와|와|엥|앗|아|웅니|언니|오빠|넵+|네+|넵넵|네넵)$/;
   const toPolite = core => { // 반말 → 존댓말
     core = norm(core);
+    const vm = core.match(/^(.*\S)\s+(오빠야?|언니야?|웅니|쌤|공쥬|공주)$/);   // "고마워 오빠" → "고마워요 오빠"
+    if (vm) return toPolite(vm[1]) + ' ' + vm[2].replace(/야$/, '');
     if (LAUGH.test(core) || KEEP.test(core)) return core;
     if (/(^|\s)웅+$/.test(core)) return core.replace(/웅웅$/, '네네').replace(/웅$/, '네');
     if (/(요|다|죠|까요|니다|용|세요)$/.test(core)) return core;
@@ -408,7 +416,7 @@ const TONE = (() => {
       [/(이써어*|있어어*)$/, '있어요'], [/(없어어*)$/, '없어요'], [/(했어어*|해써|해쪄|해쪼)$/, '했어요'],
       [/(봤어|봐써)$/, '봤어요'], [/(조오*|줘어*|죠오+)$/, '주세요'], [/(할게에*|할께|할겡)$/, '할게요'],
       [/(줄게에*|줄께|줄겡)$/, '줄게요'], [/(말해줄게)$/, '말씀드릴게요'],
-      [/(었|았|했)(오|당)$/, '$1어요'], [/(이야|야아*)$/, '이에요'], [/(지이*|징)$/, '죠'], [/(쟈아*|자아*)$/, '죠'],
+      [/(었|았|했)(오|당)$/, '$1어요'], [/거야$/, '거예요'], [/([가-힣])야$/, (m, a) => ((a.charCodeAt(0) - 0xAC00) % 28 ? a + '이에요' : a + '예요')], [/(지이*|징)$/, '죠'], [/(쟈아*|자아*)$/, '죠'],
       [/(해애*)$/, '해요'], [/(래)$/, '래요'], [/(네)$/, '네요'], [/(까)$/, '까요'], [/(어|아|여|워|와|봐|돼|대|게|데)$/, '$1요'],
       [/(당|다)$/, '$1'],
     ];
@@ -425,10 +433,10 @@ const TONE = (() => {
     if (tone === 'banmal') return lines.map(plainOf);
     if (tone === 'jon') return lines.map(politeOf);
     // 반존대: 반말과 존댓말을 섞기 — 질문은 존댓말, 나머지는 반말 (질문이 없으면 마지막 말풍선만 존댓말)
+    // 반존대: 말풍선마다 반말·존댓말을 번갈아(첫 말풍선은 존댓말), 질문은 늘 존댓말
     const isQ = l => /\?|？/.test(l);
-    const anyQ = lines.some(isQ);
-    const lastPolite = l => { const pl = plainOf(l); let n = 0; eachSentence(pl, c => (/[가-힣]/.test(c) && n++, c)); let k = 0; return eachSentence(pl, c => (/[가-힣]/.test(c) && ++k === n ? politeOf(c) : c)); };
-    return lines.map((l, i) => (anyQ ? isQ(l) : i === lines.length - 1) ? lastPolite(l) : plainOf(l));
+    if (lines.length === 1) { const pl = plainOf(lines[0]); let n = 0; eachSentence(pl, c => (/[가-힣]/.test(c) && n++, c)); let k = 0; return [eachSentence(pl, c => (/[가-힣]/.test(c) && ++k === n ? politeOf(c) : c))]; }
+    return lines.map((l, i) => (i % 2 === 0 || isQ(l)) ? politeOf(plainOf(l)) : plainOf(l));
   }
   return { convert };
 })();
@@ -572,6 +580,19 @@ function emoInner(id){
 }
 // ---------- inline edit + autosave ----------
 const saveTimers = {}; const lastFocus = {};
+// 말풍선 꾹 누르기(0.6초) → 삭제 버튼
+let pressT = null, pressEl = null, pressXY = null;
+document.addEventListener('pointerdown', e => {
+  const b = e.target.closest && e.target.closest('.dedit'); if (!b) return;
+  pressEl = b; pressXY = [e.clientX, e.clientY]; clearTimeout(pressT);
+  pressT = setTimeout(() => {
+    document.querySelectorAll('.bdel').forEach(x => x.remove());
+    b.insertAdjacentHTML('afterend', `<button class="bdel" data-act="delline" data-id="${esc(b.dataset.ed)}">🗑 이 말풍선 삭제</button>`);
+    if (navigator.vibrate) navigator.vibrate(15);
+  }, 600);
+});
+document.addEventListener('pointermove', e => { if (pressXY && Math.hypot(e.clientX - pressXY[0], e.clientY - pressXY[1]) > 10) clearTimeout(pressT); });
+['pointerup','pointercancel'].forEach(t => document.addEventListener(t, () => clearTimeout(pressT)));
 function bubblesOf(id){ return [...document.querySelectorAll(`.dedit[data-ed="${CSS.escape(id)}"]`)]; }
 function readLines(id){ return bubblesOf(id).map(el => el.innerText.replace(/ /g,' ').replace(/\n+$/,'').trim()).filter(Boolean); }
 function setInfo(id, t){ state.saveInfo[id]=t; const el=document.querySelector(`[data-si="${CSS.escape(id)}"]`); if (el) el.textContent=t; }
@@ -683,6 +704,9 @@ document.addEventListener('click', e => {
     clearTimeout(saveTimers[id]); delete saveTimers[id];
     mutate(id, x => { if (!x.toneBase || !x.toneBase.length) x.toneBase = base; x.draftMessages = next; x.tone = tone; }, `말투(${tone}): ${c.name}`);
     toast({banmal:'반말로 바꿨어요',banjon:'반존대로 바꿨어요',jon:'존댓말로 바꿨어요'}[tone]);
+  } else if (act==='delline'){
+    const prev = t.previousElementSibling; t.remove();
+    if (prev && prev.classList.contains('dedit')) { prev.remove(); bubblesOf(id).forEach((el, k) => el.dataset.i = k); scheduleSave(id); toast('말풍선을 지웠어요'); }
   } else if (act==='addline'){
     const box = document.querySelector(`[data-dl="${CSS.escape(id)}"]`); if (!box) return;
     const i = bubblesOf(id).length; box.insertAdjacentHTML('beforeend', `<div class="b draft dedit" contenteditable="true" data-ed="${esc(id)}" data-i="${i}"></div>`);
