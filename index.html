@@ -100,13 +100,13 @@ details{margin-top:10px} summary{cursor:pointer;color:var(--sub);font-size:14px}
 .gbtn{width:100%;border:0;border-radius:14px;background:#ffc9d8;color:#5a3444;font:inherit;font-weight:800;font-size:16px;padding:12px;margin:10px 0;cursor:pointer}
 .gbtn2{border:1px solid #f2cbd8;background:#fff6f9;border-radius:12px;padding:10px 12px;font:inherit;cursor:pointer;text-align:left}
 .gopts{display:flex;flex-direction:column;gap:8px}
-.gsheet,.gsheet *{box-sizing:border-box}.gsheet{overflow-x:hidden}.gsheet .search{min-width:0}
+.gsheet,.gsheet *{box-sizing:border-box}.gsheet [hidden]{display:none!important}.gsheet{overflow-x:hidden}.gsheet .search{min-width:0}
 .gmain{background:#ff8fb1;color:#fff;padding:15px;font-size:17px;margin:4px 0 6px;box-shadow:0 4px 14px rgba(255,143,177,.35)}
 .gtip{text-align:center;font-size:13px;color:#9a8290;margin-bottom:12px}.gtip b{color:#6d5262}
 .gor{display:flex;align-items:center;gap:10px;color:#c3aab6;font-size:12px;margin:14px 0 10px}.gor:before,.gor:after{content:'';flex:1;height:1px;background:#f0e2e8}
 .gchips{display:grid;grid-template-columns:1fr 1fr;gap:8px}.gchip{border:0;background:#fbf5f8;color:#6d5262;border-radius:12px;padding:11px 0;font:inherit;font-size:14px;font-weight:700;cursor:pointer}.gchip.on{background:#f6e3ec}
-.gpanel{margin-top:8px}.gpanel .grow2{margin-bottom:6px}
-.gstat{margin-top:12px;border-radius:14px;background:#f8f4f6;padding:4px 12px;min-height:20px}
+.gmorebtn{display:block;margin:14px auto 0;border:0;background:none;color:#b0909e;font:inherit;font-size:13px;cursor:pointer}.gchips{margin-top:8px}.gpanel{margin-top:8px}.gpanel .grow2{margin-bottom:6px}
+.gstat{margin-top:10px}.gstat:has(.gitem,.gconf,.gopts){margin-top:12px}
 .gtabs{display:flex;gap:6px;margin-bottom:10px}.gtab{flex:1;border:1px solid #f2cbd8;background:#fff;border-radius:999px;padding:9px;font:inherit;font-weight:700;color:#8a6b7a;cursor:pointer}.gtab.on{background:#ffc9d8;color:#5a3444;border-color:#ffc9d8}
 .gbtn3{flex:1;border:1px solid #f2cbd8;background:#fff6f9;border-radius:12px;padding:10px 8px;font:inherit;font-size:14px;font-weight:700;color:#5a3444;cursor:pointer;white-space:nowrap}
 .ghint{color:#8a7f88;font-size:13px;line-height:1.5;padding:6px 2px}.gerr{color:#d2496f}
@@ -312,11 +312,11 @@ function openGift(c){
     <button class="gbtn gmain gopen">📱 카카오 선물하기에서 고르기</button>
     <div class="gtip"><b>공유 → 링크 복사</b> 하고 돌아오면 자동으로 가져와요</div>
     <div class="grow2"><input class="glink search" placeholder="링크 붙여넣기" autocomplete="off"><button class="gbtn3 gpaste" style="flex:none;padding:10px 16px">가져오기</button></div>
-    <div class="gor">또는</div>
-    <div class="gchips"><button class="gchip" data-p="find">🔍 이름으로 찾기</button><button class="gchip" data-p="pc">💻 PC로 고르기</button></div>
+    <button class="gmorebtn">다른 방법으로 고르기 ▾</button>
+    <div class="gchips" hidden><button class="gchip" data-p="find">🔍 이름으로 찾기</button><button class="gchip" data-p="pc">💻 PC로 고르기</button></div>
     <div class="gpanel" data-p="find" hidden><div class="grow2"><input class="gq search" type="search" placeholder="예: 스타벅스, 케이크" autocomplete="off"><input class="gmax search" type="number" inputmode="numeric" placeholder="최대 금액"></div><button class="gbtn gsearch" style="margin:0">찾기</button></div>
     <div class="gpanel" data-p="pc" hidden><div class="grow2"><button class="gbtn3 gpc">① PC 크롬에 띄우기</button><button class="gbtn3 gcur">② 보는 상품 가져오기</button></div></div>
-    <div class="gbody gstat"><div class="ghint">💳 결제 직전까지는 제가 하고, 채채는 휴대폰에서 승인만 하면 돼요</div></div></div>`;
+    <div class="gbody gstat"></div></div>`;
   document.body.appendChild(box); document.body.style.overflow = 'hidden';
   const body = box.querySelector('.gbody'); const close = () => { box.remove(); document.body.style.overflow = ''; };
   box.querySelector('.gclose').onclick = close; box.addEventListener('click', e => { if (e.target === box) close(); });
@@ -381,6 +381,7 @@ function openGift(c){
     if (box.isConnected) fail('결제 확인 시간이 지났어요. 결제했으면 잠시 뒤 다시 열어 확인해 주세요.');
   }
   const takeProduct = r => { if (!r || r.ok === false || !r.item) return fail((r && r.error) || '상품을 못 찾았어요'); if (r.available === false) return fail(r.reason || '지금은 살 수 없는 상품이에요'); pick(r.item); };
+  box.querySelector('.gmorebtn').onclick = e => { const ch = box.querySelector('.gchips'); ch.hidden = !ch.hidden; e.currentTarget.textContent = ch.hidden ? '다른 방법으로 고르기 ▾' : '접기 ▴'; if (ch.hidden) { box.querySelectorAll('.gpanel').forEach(p => p.hidden = true); box.querySelectorAll('.gchip').forEach(x => x.classList.remove('on')); } };
   box.querySelectorAll('.gchip').forEach(c => c.onclick = () => { const open = !c.classList.contains('on'); box.querySelectorAll('.gchip').forEach(x => x.classList.toggle('on', open && x === c)); box.querySelectorAll('.gpanel').forEach(p => p.hidden = !(open && p.dataset.p === c.dataset.p)); });
   box.querySelector('.gopen').onclick = () => window.open('https://gift.kakao.com/home', '_blank', 'noopener');
   box.querySelector('.gpaste').onclick = async () => {
@@ -518,7 +519,7 @@ function render(){
   ${sel ? card(sel) : ''}`}
   <div class="bar"><button class="link" data-act="logout">토큰 다시 넣기</button></div></main>`;
 }
-const APP_VER = '20261008-10';
+const APP_VER = '20261008-11';
 // 새 버전이 올라오면 새로고침 없이 자동으로 바뀜 (캐시를 피해서 새 주소로 다시 열기, 고치는 중이면 끝날 때까지 기다림)
 async function checkVer(){ try { const r = await fetch('version.txt?'+Date.now(), {cache:'no-store'}); if (r.ok) { const v = (await r.text()).trim(); if (v && v !== APP_VER && !(typeof editingNow==='function' && editingNow())) { const u = new URL(location.href); u.searchParams.set('v', v); location.replace(u.toString()); } } } catch(e){} }
 setInterval(checkVer, 15000); document.addEventListener('visibilitychange', () => { if (!document.hidden) checkVer(); }); setTimeout(checkVer, 3000);
