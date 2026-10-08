@@ -387,7 +387,7 @@ function openGift(c){
     <div class="gfound"></div>
     <div class="gcart" hidden></div>
     <div class="grec"><div class="grtabs"><button class="grt on" data-t="rec">✨ 추천</button><button class="grt" data-t="find">🔍 검색</button><button class="grt" data-t="wish">♡ 찜 <span class="gwn"></span></button></div>
-      <div class="grform"><input class="gq search" type="search" placeholder="키워드 (비워도 추천돼요)" autocomplete="off"><div class="grow2"><div class="gsex"><button data-g="M">남성</button><button data-g="F">여성</button><button data-g="" class="on">무관</button></div><input class="gmax search" type="number" inputmode="numeric" placeholder="최대 금액"></div><button class="gbtn gsearch" style="margin:6px 0 0">추천 받기</button></div>
+      <div class="grform"><input class="gq search" type="search" placeholder="예: 30대 남자, 커피 좋아함, 3만원대 (비워도 돼요)" autocomplete="off"><div class="grow2"><div class="gsex"><button data-g="M">남성</button><button data-g="F">여성</button><button data-g="" class="on">무관</button></div><input class="gmax search" type="number" inputmode="numeric" placeholder="최대 금액"></div><button class="gbtn gsearch" style="margin:6px 0 0">추천 받기</button></div>
       <div class="grlist"></div></div>
     <div class="gbody gstat"></div></div>`;
   document.body.appendChild(box); document.body.style.overflow = 'hidden';
@@ -400,7 +400,11 @@ function openGift(c){
   const loadW = () => { try { return JSON.parse(localStorage.getItem(WK) || '[]'); } catch(e){ return []; } };
   const saveW = w => { try { localStorage.setItem(WK, JSON.stringify(w.slice(0, 60))); } catch(e){} };
   const isW = it => loadW().some(x => String(x.productId) === String(it.productId));
-  const togW = it => { let w = loadW(); w = isW(it) ? w.filter(x => String(x.productId) !== String(it.productId)) : [{ productId: it.productId, productName: it.productName, brand: it.brand, price: it.price, imageUrl: it.imageUrl }, ...w]; saveW(w); box.querySelector('.gwn').textContent = w.length || ''; };
+  const setWN = () => { box.querySelector('.gwn').textContent = loadW().length || ''; };
+  const togW = it => { let w = loadW(); w = isW(it) ? w.filter(x => String(x.productId) !== String(it.productId)) : [{ productId: it.productId, productName: it.productName, brand: it.brand, price: it.price, imageUrl: it.imageUrl }, ...w]; saveW(w); setWN();
+    // LIVE·OFFICE 공용 찜에도 같이 반영(집 PC를 거쳐서)
+    giftAsk('wishes', { toggle: { productId: it.productId, productName: it.productName, brand: it.brand, price: it.price, imageUrl: it.imageUrl } }, 60).then(r => { if (r && r.ok && Array.isArray(r.items)) { saveW(r.items); setWN(); } else toast('LIVE 찜에는 아직 못 넣었어요 (이 폰에는 저장됨)'); }).catch(() => {}); };
+  giftAsk('wishes', {}, 60).then(r => { if (r && r.ok && Array.isArray(r.items)) { saveW(r.items); setWN(); if (tab === 'wish') showList(loadW(), '찜 (LIVE와 같이 봐요)'); } }).catch(() => {});
   box.querySelector('.gwn').textContent = loadW().length || '';
   const cart = []; const cartEl = box.querySelector('.gcart');
   const keyOf = (it, picked) => it.productId + '|' + (picked || []).join('/');
@@ -417,21 +421,25 @@ function openGift(c){
   const card = (it, i) => `<div class="gitem"><span class="gimg"><img src="${esc(it.imageUrl||'')}" alt="" loading="lazy"><button class="gheart ${isW(it) ? 'on' : ''}" data-w="${i}">${isW(it) ? '♥' : '♡'}</button></span><span class="gb">${esc(it.brand||'')}</span><span class="gn">${esc(it.productName||'')}</span><span class="gp">${won(it.price)}</span><button class="gadd" data-a="${i}">+ 담기</button></div>`;
   function showList(items, title){
     const L = box.querySelector('.grlist');
-    if (!items.length) { L.innerHTML = `<div class="ghint">${title === '찜' ? '상품의 ♡를 누르면 여기에 모여요' : '찾은 선물이 없어요'}</div>`; return; }
+    if (!items.length) { L.innerHTML = `<div class="ghint">${title.startsWith('찜') ? '상품의 ♡를 누르면 여기에 모여요 (LIVE·OFFICE와 같이 봐요)' : '찾은 선물이 없어요'}</div>`; return; }
     L.innerHTML = `<div class="ghint">${title} · [+ 담기]로 여러 개 담을 수 있어요 (♡는 나중에 살 찜)</div><div class="ggrid">${items.slice(0, 24).map(card).join('')}</div>`;
     L.querySelectorAll('.gadd').forEach(b => b.onclick = () => pick(items[+b.dataset.a]));
     L.querySelectorAll('.gheart').forEach(b => b.onclick = () => { const it = items[+b.dataset.w]; togW(it); b.classList.toggle('on', isW(it)); b.textContent = isW(it) ? '♥' : '♡'; });
   }
-  let tab = 'rec', sex = '';
+  let tab = 'rec', sex = '', recPage = 0;
   box.querySelectorAll('.gsex button').forEach(b => b.onclick = () => { sex = b.dataset.g; box.querySelectorAll('.gsex button').forEach(x => x.classList.toggle('on', x === b)); });
-  box.querySelectorAll('.grt').forEach(t => t.onclick = () => { tab = t.dataset.t; box.querySelectorAll('.grt').forEach(x => x.classList.toggle('on', x === t)); box.querySelector('.grform').hidden = tab === 'wish'; box.querySelector('.gsearch').textContent = tab === 'rec' ? '추천 받기' : '검색하기'; box.querySelector('.gq').placeholder = tab === 'rec' ? '키워드 (비워도 추천돼요)' : '상품명 · 브랜드 (예: 스타벅스)'; if (tab === 'wish') showList(loadW(), '찜'); else box.querySelector('.grlist').innerHTML = ''; });
+  box.querySelectorAll('.grt').forEach(t => t.onclick = () => { tab = t.dataset.t; box.querySelectorAll('.grt').forEach(x => x.classList.toggle('on', x === t)); box.querySelector('.grform').hidden = tab === 'wish'; box.querySelector('.gsearch').textContent = tab === 'rec' ? '추천 받기' : '검색하기'; box.querySelector('.gq').placeholder = tab === 'rec' ? '예: 30대 남자, 커피 좋아함, 3만원대 (비워도 돼요)' : '상품명 · 브랜드 (예: 스타벅스)'; recPage = 0; if (tab === 'wish') showList(loadW(), '찜 (LIVE와 같이 봐요)'); else box.querySelector('.grlist').innerHTML = ''; });
   async function search(){
     let q = box.querySelector('.gq').value.trim();
     if (tab === 'find' && !q) return toast('찾을 상품명을 적어 주세요');
-    if (tab === 'rec') q = [q || '인기 선물', sex === 'M' ? '남자' : sex === 'F' ? '여자' : ''].filter(Boolean).join(' ');
     const max = Number(box.querySelector('.gmax').value) || null;
-    const L = box.querySelector('.grlist'); L.innerHTML = '<div class="ghint">⏳ 카카오 선물하기에서 찾는 중… (10~30초)</div>';
-    try { const r = await giftAsk('search', { query: q, maxPrice: max, page: 0 }); if (!r.ok) { L.innerHTML = `<div class="ghint gerr">${esc(r.error || '못 찾았어요')}</div>`; return; } showList(r.items || [], tab === 'rec' ? '추천 결과 (카카오 인기순)' : '검색 결과'); }
+    const L = box.querySelector('.grlist'); L.innerHTML = `<div class="ghint">⏳ ${tab === 'rec' ? 'AI가 조건을 읽고 카카오 선물하기에서 고르는 중…' : '카카오 선물하기에서 찾는 중…'} (10~40초)</div>`;
+    try {
+      const r = tab === 'rec' ? await giftAsk('recommend', { request: q, gender: sex, maxPrice: max, page: recPage++ % 5 }, 150) : await giftAsk('search', { query: q, maxPrice: max, page: 0 });
+      if (!r.ok) { L.innerHTML = `<div class="ghint gerr">${esc(r.error || '못 찾았어요')}</div>`; return; }
+      showList(r.items || [], tab === 'rec' ? `AI 추천${r.words && r.words.length ? ' · ' + r.words.map(esc).join(', ') : ''}` : '검색 결과');
+      if (tab === 'rec' && (r.items || []).length) box.querySelector('.gsearch').textContent = '다른 추천 보기';
+    }
     catch(e){ L.innerHTML = `<div class="ghint gerr">${esc(e.message || e)}</div>`; }
   }
   async function pick(it, picked = []){
@@ -658,7 +666,7 @@ function render(){
   ${sel ? card(sel) : ''}`}
   <div class="bar"><button class="link" data-act="logout">토큰 다시 넣기</button></div></main>`;
 }
-const APP_VER = '20261008-13';
+const APP_VER = '20261008-14';
 // 새 버전이 올라오면 새로고침 없이 자동으로 바뀜 (캐시를 피해서 새 주소로 다시 열기, 고치는 중이면 끝날 때까지 기다림)
 async function checkVer(){ try { const r = await fetch('version.txt?'+Date.now(), {cache:'no-store'}); if (r.ok) { const v = (await r.text()).trim(); if (v && v !== APP_VER && !(typeof editingNow==='function' && editingNow())) { const u = new URL(location.href); u.searchParams.set('v', v); location.replace(u.toString()); } } } catch(e){} }
 setInterval(checkVer, 15000); document.addEventListener('visibilitychange', () => { if (!document.hidden) checkVer(); }); setTimeout(checkVer, 3000);
