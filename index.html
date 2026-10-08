@@ -251,6 +251,7 @@ details{margin-top:10px} summary{cursor:pointer;color:var(--sub);font-size:14px}
 .gimg{position:relative;display:block}.gheart{position:absolute;right:6px;bottom:6px;width:28px;height:28px;border-radius:50%;border:0;background:rgba(255,255,255,.9);color:#b0909e;font-size:14px}.gheart.on{color:#ef5b87}
 .gadd{margin-top:4px;border:0;border-radius:10px;background:#fde9f1;color:#d9658f;font-weight:800;padding:7px 0;font-size:13px}
 div.gitem{cursor:default}
+.evnote{margin:8px 0 2px;padding:8px 10px;border-radius:12px;background:#fdf3f7;color:#8a5a70;font-size:13px}.evnote b{color:#5a3444}
 </style>
 </head>
 <body>
@@ -548,6 +549,19 @@ async function loadEvents(){
   try { const r = await api('events.json', { headers:{ 'Accept':'application/vnd.github.raw+json' } }); if (r.ok) { const j = JSON.parse(await r.text()); state.events = Array.isArray(j) ? j : (j.events||[]); } } catch(e){}
   state.evAt = Date.now();
 }
+async function addEvent(ev){
+  // 답장을 보낼 때 그 답장에 약속이 정해져 있으면 달력에 바로 기록(같은 id면 고쳐 쓰기)
+  for (let t = 0; t < 4; t++) {
+    const g = await api('events.json'); let cur = [], sha;
+    if (g.ok) { const j = await g.json(); sha = j.sha; cur = JSON.parse(b64dec(j.content) || '[]'); cur = Array.isArray(cur) ? cur : (cur.events||[]); }
+    const e = { createdAt: new Date().toISOString(), ...ev };
+    const i = cur.findIndex(x => x.id === e.id); if (i < 0) cur.push(e); else cur[i] = { ...cur[i], ...e };
+    const r = await api('events.json', { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ message:`달력: ${e.title}`, content: b64enc(JSON.stringify(cur, null, 1)), ...(sha ? { sha } : {}) }) });
+    if (r.ok) { state.events = cur; toast(`📅 달력에 넣었어요: ${e.title}`); return true; }
+  }
+  toast('달력에 못 넣었어요 — 다시 시도해 주세요'); return false;
+}
+const evWhen = e => { const d = new Date(e.at); const h = d.getHours(), mi = String(d.getMinutes()).padStart(2,'0'); const untimed = e.allDay || e.timeTbd || (h === 0 && mi === '00'); return `${d.getMonth()+1}/${d.getDate()}(${WD[d.getDay()]})${untimed ? '' : ` ${h < 12 ? '오전' : '오후'} ${h % 12 || 12}:${mi}`}`; };
 async function delEvent(id){
   for (let t = 0; t < 4; t++) {
     const g = await api('events.json'); if (!g.ok) return;
@@ -573,7 +587,7 @@ function calHtml(){
       last = k;
     }
     const h = d.getHours(), mi = String(d.getMinutes()).padStart(2,'0');
-    const tm = e.allDay ? '하루 종일' : `${h < 12 ? '오전' : '오후'} ${h % 12 || 12}:${mi}`;
+    const tm = e.allDay ? '하루 종일' : (e.timeTbd || (h === 0 && mi === '00')) ? '시간 미정' : `${h < 12 ? '오전' : '오후'} ${h % 12 || 12}:${mi}`;
     out += `<div class="cev"><div class="ctm">${tm}</div><div class="cbody"><div class="ctt">${esc(e.title||'약속')}</div>${e.place?`<div class="cmeta">📍 ${esc(e.place)}</div>`:''}${e.who?`<div class="cmeta">💬 ${esc(e.who)}</div>`:''}${e.note?`<div class="cmeta">${esc(e.note)}</div>`:''}</div><button class="cdel" data-act="evdel" data-ev="${esc(e.id)}">삭제</button></div>`;
   }
   return `<div class="cal">${out}</div></div>`;
@@ -666,7 +680,7 @@ function render(){
   ${sel ? card(sel) : ''}`}
   <div class="bar"><button class="link" data-act="logout">토큰 다시 넣기</button></div></main>`;
 }
-const APP_VER = '20261008-14';
+const APP_VER = '20261008-15';
 // 새 버전이 올라오면 새로고침 없이 자동으로 바뀜 (캐시를 피해서 새 주소로 다시 열기, 고치는 중이면 끝날 때까지 기다림)
 async function checkVer(){ try { const r = await fetch('version.txt?'+Date.now(), {cache:'no-store'}); if (r.ok) { const v = (await r.text()).trim(); if (v && v !== APP_VER && !(typeof editingNow==='function' && editingNow())) { const u = new URL(location.href); u.searchParams.set('v', v); location.replace(u.toString()); } } } catch(e){} }
 setInterval(checkVer, 15000); document.addEventListener('visibilitychange', () => { if (!document.hidden) checkVer(); }); setTimeout(checkVer, 3000);
@@ -863,6 +877,7 @@ function card(c){
     ${state.shotOpen[c.id]?`<div class="shot" data-shot="${esc(c.id)}">${state.shotUrl[c.id]?`<img src="${state.shotUrl[c.id]}" alt="카톡 화면">`:(state.shotMiss[c.id]?'<div class="st">아직 찍은 화면이 없어요 (다음 회차에 찍혀요)</div>':'<div class="st">불러오는 중…</div>')}</div>`:''}
     ${reason?`<div class="reason">${esc(reason)}</div>`:''}
     ${c.summary && !reason?`<div class="summary">${esc(c.summary)}</div>`:''}
+    ${c.event && c.event.at ? `<div class="evnote">📅 ${c.eventSaved ? '달력에 넣었어요' : '보내면 달력에 바로 넣어요'}: <b>${esc(evWhen(c.event))} ${esc(c.event.title||'약속')}</b></div>` : ''}
     ${msgs?`<div class="lbl">최근 대화</div><div class="msgs">${msgs}</div>`:''}
     ${(draftHtml)?`<div class="lbl">${c.status==='approved'?'승인한 답장':'보낼 답장'}</div>${draftHtml}`:''}
     ${status}${btns}<button class="never" data-act="never" data-id="${esc(c.id)}">🚫 다음부터 이 사람 안 가져오기</button></div>`;
@@ -986,7 +1001,9 @@ document.addEventListener('click', e => {
     if (hasBlank(msgs)){ toast('[ ] 빈칸을 먼저 채워 주세요'); return; }
     if (!msgs.length || hasBlank(msgs)) return;
     mutate(id, x => { x.draftMessages = msgs; x.status='approved'; x.approval={ id: rid(), messages: msgs, at: new Date().toISOString() }; }, `승인: ${c.name}`);
-    toast('승인했어요 — 바로 보내요 📤'); goNext(id);
+    toast('승인했어요 — 바로 보내요 📤');
+    if (c.event && c.event.at) { const ev = { ...c.event, note: [c.event.note, '답장 보내면서 자동 기록'].filter(Boolean).join(' · ') }; writing = writing.then(() => addEvent(ev)).then(ok => ok && mutate(id, x => { x.eventSaved = ev.id; }, `달력 기록: ${c.name}`)); }
+    goNext(id);
   } else if (act==='unapprove'){
     mutate(id, x => { x.status='draft'; x.approval=null; }, `승인 취소: ${c.name}`); toast('승인 취소했어요');
   } else if (act==='skip'){
