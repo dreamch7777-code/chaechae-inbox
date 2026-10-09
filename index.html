@@ -435,6 +435,10 @@ details.older .msgs{margin-top:0}
 .gsheet .kgb-help{text-align:center!important;margin-top:2px}
 .grec{padding:12px;margin-top:12px}
 .gheart{display:grid;place-items:center;color:#c9a7b6}.gheart.on{color:#ef5b87}
+
+.gsheet .kgb-find{grid-template-columns:1fr 1fr!important;gap:8px}
+.gsheet .kgb-go{padding:11px 10px;font-size:14.5px;border-radius:16px;box-shadow:0 4px 12px rgba(239,111,150,.25)}
+.gsheet .kgb-sub{justify-self:stretch;border-radius:16px;padding:11px 10px;font-size:14px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
@@ -569,7 +573,7 @@ async function giftAsk(op, extra, waitSec = 90){
   if (!await putJson('requests/gift.json', { id, op, at: new Date().toISOString(), ...extra }, `🎁 선물 요청: ${op}`)) throw new Error('요청을 못 보냈어요');
   const t0 = Date.now();
   while (Date.now() - t0 < waitSec * 1000) {
-    await new Promise(r => setTimeout(r, 2500));
+    await new Promise(r => setTimeout(r, Date.now() - t0 < 20000 ? 1000 : 2000));
     const r = await api(`exports/${id}.json`, { headers:{ 'Accept':'application/vnd.github.raw+json' } });
     if (r.ok) { const j = JSON.parse(await r.text()); api(`exports/${id}.json`).then(x => x.ok && x.json()).then(x => x && api(`exports/${id}.json`, { method:'DELETE', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ message:'선물 결과 정리', sha:x.sha }) })).catch(()=>{}); return j.result || {}; }
   }
@@ -579,7 +583,7 @@ const won = n => (Number(n)||0).toLocaleString('ko-KR') + '원';
 function openGift(c){
   const box = document.createElement('div'); box.className = 'gbox';
   box.innerHTML = `<div class="gsheet"><div class="ghead"><div class="gtitle"><span class="gico">${IC.gift(22)}</span><b>${esc(c.name)}<small>에게 선물</small></b></div><button class="lx gclose" aria-label="닫기">✕</button></div>
-    <div class="kgb-find"><button class="kgb-go gopen"><span>${IC.gift(20)}</span><b>카카오 선물하기 열기</b></button><button class="kgb-sub gsub"></button></div>
+    <div class="kgb-find"><button class="kgb-go gopen"><span>${IC.gift(20)}</span><b>카카오 선물함</b></button><button class="kgb-sub gsub"></button></div>
     <p class="kgb-help"><span class="ghelp"></span> <button class="kgb-link galt"></button></p>
     <p class="kgb-watch" hidden></p>
     <form class="kgb-paste" hidden><input class="glink" placeholder="카카오 상품 링크 붙여넣기" autocomplete="off"><button type="submit">찾기</button></form>
@@ -632,9 +636,14 @@ function openGift(c){
     let q = box.querySelector('.gq').value.trim();
     if (tab === 'find' && !q) return toast('찾을 상품명을 적어 주세요');
     const max = Number(box.querySelector('.gmax').value) || null;
-    const L = box.querySelector('.grlist'); L.innerHTML = `<div class="ghint">⏳ ${tab === 'rec' ? 'AI가 조건을 읽고 카카오 선물하기에서 고르는 중…' : '카카오 선물하기에서 찾는 중…'} (10~40초)</div>`;
+    const L = box.querySelector('.grlist'); L.innerHTML = `<div class="ghint">⏳ ${tab === 'rec' ? '선물 고르는 중…' : '찾는 중…'}</div>`;
     try {
-      const r = tab === 'rec' ? await giftAsk('recommend', { request: q, gender: sex, maxPrice: max, page: recPage++ % 5 }, 150) : await giftAsk('search', { query: q, maxPrice: max, page: 0 });
+      const ck = 'cci_gc:' + JSON.stringify([tab, q, sex, max, tab === 'rec' ? recPage % 5 : 0]);
+      let r = null; try { const c = JSON.parse(localStorage.getItem(ck) || 'null'); if (c && Date.now() - c.at < 6 * 3600e3) r = c.r; } catch(e){}
+      if (r) { recPage++; } else {
+        r = tab === 'rec' ? await giftAsk('recommend', { request: q, gender: sex, maxPrice: max, page: recPage++ % 5 }, 150) : await giftAsk('search', { query: q, maxPrice: max, page: 0 });
+        if (r && r.ok && (r.items || []).length) try { localStorage.setItem(ck, JSON.stringify({ at: Date.now(), r })); } catch(e){}
+      }
       if (!r.ok) { L.innerHTML = `<div class="ghint gerr">${esc(r.error || '못 찾았어요')}</div>`; return; }
       showList(r.items || [], tab === 'rec' ? `AI 추천${r.words && r.words.length ? ' · ' + r.words.map(esc).join(', ') : ''}` : '검색 결과');
       if (tab === 'rec' && (r.items || []).length) box.querySelector('.gsearch').textContent = '다른 추천 보기';
@@ -728,11 +737,11 @@ function openGift(c){
   box.querySelector('.gopen').onclick = () => mobile ? openHere() : openPc();
   const sub = box.querySelector('.gsub'), alt = box.querySelector('.galt');
   if (mobile) {
-    sub.innerHTML = IC.link(17) + '<span>복사한 링크 담기</span>'; sub.onclick = () => readClip(true);
+    sub.innerHTML = IC.link(17) + '<span>링크 담기</span>'; sub.onclick = () => readClip(true);
     box.querySelector('.ghelp').textContent = '상품에서 [공유 → 링크 복사] 하고 돌아오면 저절로 담겨요.';
     alt.textContent = 'PC로 열기'; alt.onclick = openPc;
   } else {
-    sub.innerHTML = IC.link(17) + '<span>보고 있는 상품 담기</span>'; sub.onclick = async () => { busy('PC에서 보고 있는 상품 확인 중…'); try { const r = await giftAsk('current', {}, 45); body.innerHTML = ''; if (showFound(r, 'pc')) lastPc = r.item.productId; else fail((r && r.error) || '카카오 창에서 상품 하나를 열어 주세요'); } catch(e){ fail(e); } };
+    sub.innerHTML = IC.link(17) + '<span>보는 상품 담기</span>'; sub.onclick = async () => { busy('PC에서 보고 있는 상품 확인 중…'); try { const r = await giftAsk('current', {}, 45); body.innerHTML = ''; if (showFound(r, 'pc')) lastPc = r.item.productId; else fail((r && r.error) || '카카오 창에서 상품 하나를 열어 주세요'); } catch(e){ fail(e); } };
     box.querySelector('.ghelp').textContent = 'PC 크롬에 카카오 선물하기가 열려요. 상품을 열어 두면 아래에 ‘지금 보고 있는 상품’이 떠요.';
     alt.textContent = '이 브라우저에서 열기 ↗'; alt.onclick = openHere;
   }
@@ -740,6 +749,7 @@ function openGift(c){
   const onBack = () => { if (!box.isConnected) { document.removeEventListener('visibilitychange', onBack); window.removeEventListener('focus', onBack); return; } if (document.visibilityState !== 'visible' || !away || Date.now() - away > 30 * 60000) return; readClip(false); };
   document.addEventListener('visibilitychange', onBack); window.addEventListener('focus', onBack);
   box.querySelector('.gsearch').onclick = search;
+  search();   // 열자마자 인기 선물부터 (한 번 받아둔 건 바로 떠요)
   box.querySelector('.gq').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing) search(); });
 }
 state.events = []; state.evAt = 0;
@@ -890,7 +900,7 @@ function render(){
   <div class="bar"><button class="link" data-act="logout">토큰 다시 넣기</button></div></main>`;
   const ton = document.querySelector('.tab.on'); if (ton && ton.parentElement) { const bar = ton.parentElement; const x = ton.offsetLeft - (bar.clientWidth - ton.offsetWidth)/2; if (x > 0 || bar.scrollLeft) bar.scrollLeft = Math.max(0, x); }
 }
-const APP_VER = '20261010-08';
+const APP_VER = '20261010-09';
 // 새 버전이 올라오면 새로고침 없이 자동으로 바뀜 (캐시를 피해서 새 주소로 다시 열기, 고치는 중이면 끝날 때까지 기다림)
 async function checkVer(){ try { const r = await fetch('version.txt?'+Date.now(), {cache:'no-store'}); if (r.ok) { const v = (await r.text()).trim(); if (v && v !== APP_VER && !(typeof editingNow==='function' && editingNow())) { const u = new URL(location.href); u.searchParams.set('v', v); location.replace(u.toString()); } } } catch(e){} }
 setInterval(checkVer, 15000); document.addEventListener('visibilitychange', () => { if (!document.hidden) checkVer(); }); setTimeout(checkVer, 3000);
