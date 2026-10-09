@@ -827,7 +827,7 @@ function render(){
   <div class="bar"><button class="link" data-act="logout">토큰 다시 넣기</button></div></main>`;
   const ton = document.querySelector('.tab.on'); if (ton && ton.parentElement) { const bar = ton.parentElement; const x = ton.offsetLeft - (bar.clientWidth - ton.offsetWidth)/2; if (x > 0 || bar.scrollLeft) bar.scrollLeft = Math.max(0, x); }
 }
-const APP_VER = '20261010-02';
+const APP_VER = '20261010-03';
 // 새 버전이 올라오면 새로고침 없이 자동으로 바뀜 (캐시를 피해서 새 주소로 다시 열기, 고치는 중이면 끝날 때까지 기다림)
 async function checkVer(){ try { const r = await fetch('version.txt?'+Date.now(), {cache:'no-store'}); if (r.ok) { const v = (await r.text()).trim(); if (v && v !== APP_VER && !(typeof editingNow==='function' && editingNow())) { const u = new URL(location.href); u.searchParams.set('v', v); location.replace(u.toString()); } } } catch(e){} }
 setInterval(checkVer, 15000); document.addEventListener('visibilitychange', () => { if (!document.hidden) checkVer(); }); setTimeout(checkVer, 3000);
@@ -922,7 +922,7 @@ function openViewer(p, hd){
   const list = hd.length ? hd : [p];
   const box = document.createElement('div'); box.className = 'lbox';
   const many = list.length > 1;
-  box.innerHTML = `<button class="lx lclose" aria-label="닫기">✕</button>${many?`<div class="lcount"><b>1</b> / ${list.length}</div>`:''}<div class="lscroll lpager">${list.map(q => `<div class="lpage"><img alt="사진" data-q="${esc(q)}"></div>`).join('')}</div>${many?`<div class="ldots">${list.map((_,i)=>`<i class="${i?'':'on'}"></i>`).join('')}</div>`:''}<div class="lbar"><button class="lsave">⬇︎ 이 사진 저장</button>${many?`<button class="lsaveall">${list.length}장 모두</button>`:''}<button class="lclose">닫기 ✕</button></div><div class="lhint">${hd.length ? '원본 화질' : '작은 사진이에요 · 원본은 다음 회차에 받아와요'}${many?' · 옆으로 넘겨 보세요':''}</div>`;
+  box.innerHTML = `<button class="lx lclose" aria-label="닫기">✕</button>${many?`<div class="lcount"><b>1</b> / ${list.length}</div>`:''}<div class="lscroll lpager">${list.map(q => `<div class="lpage"><img alt="사진" data-q="${esc(q)}"></div>`).join('')}</div>${many?`<div class="ldots">${list.map((_,i)=>`<i class="${i?'':'on'}"></i>`).join('')}</div>`:''}<div class="lbar"><button class="lsave">⬇︎ 이 사진 저장</button>${many?`<button class="lsaveall">${list.length}장 모두</button>`:''}</div><div class="lhint">${hd.length ? '원본 화질' : '작은 사진이에요 · 원본은 다음 회차에 받아와요'}${many?' · 옆으로 넘겨 보세요':''}</div>`;
   document.body.appendChild(box); document.body.style.overflow = 'hidden';
   const pager = box.querySelector('.lpager'); const imgs = [...box.querySelectorAll('img')];
   if (hd.length && state.mediaUrl[p]) imgs[0].src = state.mediaUrl[p];          // 원본 받는 동안 작은 사진 먼저
@@ -948,7 +948,7 @@ function openViewer(p, hd){
 const avHd = {};
 function openUrlViewer(u, name){
   const box = document.createElement('div'); box.className = 'lbox';
-  box.innerHTML = `<button class="lx lclose" aria-label="닫기">✕</button><div class="lscroll"><img alt="프사" src="${avHd[name] || u}"></div><div class="lbar"><button class="lclose">닫기 ✕</button></div><div class="lhint">${avHd[name] ? '원본 화질 · ' : ''}사진을 길게 눌러 저장할 수 있어요</div>`;
+  box.innerHTML = `<button class="lx lclose" aria-label="닫기">✕</button><div class="lscroll"><img alt="프사" src="${avHd[name] || u}"></div><div class="lhint">${avHd[name] ? '원본 화질 · ' : ''}사진을 길게 눌러 저장할 수 있어요</div>`;
   document.body.appendChild(box); document.body.style.overflow = 'hidden';
   if (name && !avHd[name]) (async () => { try { const r = await api(`avatars/${await shotKey(name)}.jpg`, { headers:{ 'Accept':'application/vnd.github.raw+json' } }); if (r.ok) { avHd[name] = URL.createObjectURL(await r.blob()); const im = box.querySelector('img'); if (im) im.src = avHd[name]; const h = box.querySelector('.lhint'); if (h) h.textContent = '원본 화질 · 사진을 길게 눌러 저장할 수 있어요'; } } catch(e){} })();
   const close = () => { box.remove(); document.body.style.overflow = ''; };
