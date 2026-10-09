@@ -272,15 +272,16 @@ h1{font-size:30px}
 .pickbox{border-radius:24px;padding:12px;box-shadow:0 4px 18px rgba(233,138,166,.08)}
 .search{border-radius:999px;padding:11px 16px;font-size:15px;background:var(--soft);border-color:transparent}
 .search:focus{border-color:var(--chipOn);background:var(--card)}
-.grid{grid-template-columns:1fr;gap:2px;max-height:268px;margin-top:8px}
-@media (min-width:520px){.grid{grid-template-columns:1fr 1fr;gap:2px 6px}}
-.pick{display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:10px;padding:7px 8px;border-radius:16px}
+.grid{grid-template-columns:1fr 1fr;gap:2px 4px;max-height:236px;margin-top:8px}
+.pick{display:grid;grid-template-columns:30px minmax(0,1fr);gap:8px;padding:6px 6px;border-radius:14px}
 .pick:hover{background:var(--soft)}
 .pick.on{background:#ffeaf1;border-color:transparent;box-shadow:inset 0 0 0 1.5px var(--chipOn)}
-.pav{width:34px;height:34px;border-radius:13px;object-fit:cover;background:#f3e6ee}
-.pn{font-size:14.5px}
-.ps{font-size:11.5px;font-weight:800;padding:3px 8px;border-radius:999px;background:#f3eef1;color:#9a8a92}
-.ps.wait{background:#ffe1ea;color:#d2496f}.ps.chk{background:#fff0dc;color:#c27a2c}.ps.ok{background:#e3f4ea;color:#3f9468}.ps.bad{background:#fde4e6;color:#c8394f}.ps.go{background:#e6efff;color:#4a6fc0}
+.pav{width:30px;height:30px;border-radius:11px;object-fit:cover;background:#f3e6ee}
+.pt{display:flex;flex-direction:column;min-width:0;gap:1px}
+.pn{font-size:13.5px;line-height:1.25}
+.ps{font-size:11px;font-weight:700;padding:0;background:none!important;color:#a8979f}
+.ps.wait{color:#e0557f}.ps.chk{color:#c27a2c}.ps.ok{color:#3f9468}.ps.bad{color:#c8394f}.ps.go{color:#4a6fc0}
+.ps:before{content:'● ';font-size:8px;vertical-align:1px}
 
 /* 카드 */
 .card{border-radius:26px;padding:16px 16px 14px;border:0;box-shadow:0 1px 0 var(--line),0 10px 30px rgba(214,120,152,.12)}
@@ -783,7 +784,7 @@ function gridHtml(list){
   const shown = q ? list.filter(c => String(c.name||'').toLowerCase().includes(q)) : list;
   if (!shown.length) return `<div class="empty" style="padding:24px 0">${q?'검색 결과가 없어요':'비어 있어요 ✨'}</div>`;
   const tone = l => /답장 대기/.test(l) ? 'wait' : /확인/.test(l) ? 'chk' : /보냄/.test(l) ? 'ok' : /못/.test(l) ? 'bad' : /발송 중/.test(l) ? 'go' : 'dim';
-  return shown.map(c => { const l = stLabel(c); return `<button class="pick ${c.id===state.sel?'on':''}" data-pick="${esc(c.id)}"><img class="pav" src="${esc(avatarSrc(c))}" alt="" loading="lazy" onerror="this.onerror=null;this.src=DEFAULT_AV"><span class="pn">${esc(c.name)}</span><span class="ps ${tone(l)}">${esc(l)}</span></button>`; }).join('');
+  return shown.map(c => { const l = stLabel(c); return `<button class="pick ${c.id===state.sel?'on':''}" data-pick="${esc(c.id)}"><img class="pav" src="${esc(avatarSrc(c))}" alt="" loading="lazy" onerror="this.onerror=null;this.src=DEFAULT_AV"><span class="pt"><span class="pn">${esc(c.name)}</span><span class="ps ${tone(l)}">${esc(l)}</span></span></button>`; }).join('');
 }
 function render(){
   if (!token) return renderSetup();
@@ -806,7 +807,7 @@ function render(){
   <div class="bar"><button class="link" data-act="logout">토큰 다시 넣기</button></div></main>`;
   const ton = document.querySelector('.tab.on'); if (ton && ton.parentElement) { const bar = ton.parentElement; const x = ton.offsetLeft - (bar.clientWidth - ton.offsetWidth)/2; if (x > 0 || bar.scrollLeft) bar.scrollLeft = Math.max(0, x); }
 }
-const APP_VER = '20261009-02';
+const APP_VER = '20261009-03';
 // 새 버전이 올라오면 새로고침 없이 자동으로 바뀜 (캐시를 피해서 새 주소로 다시 열기, 고치는 중이면 끝날 때까지 기다림)
 async function checkVer(){ try { const r = await fetch('version.txt?'+Date.now(), {cache:'no-store'}); if (r.ok) { const v = (await r.text()).trim(); if (v && v !== APP_VER && !(typeof editingNow==='function' && editingNow())) { const u = new URL(location.href); u.searchParams.set('v', v); location.replace(u.toString()); } } } catch(e){} }
 setInterval(checkVer, 15000); document.addEventListener('visibilitychange', () => { if (!document.hidden) checkVer(); }); setTimeout(checkVer, 3000);
