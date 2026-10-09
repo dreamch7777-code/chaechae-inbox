@@ -386,6 +386,42 @@ details.older .msgs{margin-top:0}
 .lsaveall{background:rgba(255,255,255,.18);color:#fff}
 .bvid video{display:block;width:100%;max-width:260px;border-radius:12px;background:#000}
 .mini.ico{font-size:22px;padding:7px 0;line-height:1}
+
+/* 선물창 다시 꾸미기 */
+.gbox{background:rgba(58,30,44,.42);backdrop-filter:blur(3px)}
+.gsheet{background:#fffafc;padding:8px 18px calc(env(safe-area-inset-bottom,0px) + 22px);box-shadow:0 -10px 40px rgba(120,50,80,.18)}
+.gsheet:before{background:#f2d6e1;margin:2px auto 14px}
+.ghead{margin-bottom:16px}
+.gtitle{display:flex;align-items:center;gap:12px;min-width:0}
+.gico{flex:none;width:46px;height:46px;border-radius:16px;background:linear-gradient(135deg,#ffe1ea,#ffeedd);display:grid;place-items:center;font-size:24px}
+.gtitle small{display:block;font-size:12px;color:#b08a9b;font-weight:700}
+.gtitle b{display:block;font-size:18px;color:#4a2d3a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ghead .lx{width:36px;height:36px;line-height:36px;font-size:16px;background:#f7e9ef;color:#9a7486}
+.gsheet .kgb-find{gap:8px}
+.gsheet .kgb-go{border-radius:18px;padding:15px 14px;background:linear-gradient(135deg,#f57fa4,#ef6f96);font-size:16px;font-weight:800;box-shadow:0 8px 18px rgba(239,111,150,.32)}
+.gsheet .kgb-go span{font-size:19px}
+.gsheet .kgb-sub{border:0;background:#fff;color:#c25b76;border-radius:18px;padding:12px;font-size:14px;box-shadow:inset 0 0 0 1.5px #f6dbe5}
+.gsheet .kgb-help{font-size:12px;color:#a68c96;padding:0 4px}
+.gsheet .kgb-link{font-size:12px;color:#d2496f;margin-left:2px}
+.grec{margin-top:14px;border-top:0;padding:14px;background:#fff;border-radius:22px;box-shadow:0 2px 12px rgba(214,120,152,.08)}
+.grtabs{gap:3px;background:#f8eef2;border-radius:999px;padding:4px;margin-bottom:12px}
+.grt{background:transparent;color:#9a8290;padding:9px 0;font-size:13.5px}
+.grt.on{background:#fff;color:#d2496f;box-shadow:0 1px 5px rgba(120,60,90,.14)}
+.grform{gap:8px}
+.gsheet .search{background:#fbf5f8;border:1.5px solid transparent;border-radius:16px;padding:12px 14px;font-size:15px}
+.gsheet .search:focus{background:#fff;border-color:#f6c3d4}
+.gsex{background:#fbf5f8;border-radius:16px;padding:4px}
+.gsex button{padding:8px 0;border-radius:12px;font-size:13.5px}
+.gsex button.on{background:#fff;color:#d2496f;box-shadow:0 1px 5px rgba(120,60,90,.14)}
+.gsheet .gbtn{border-radius:18px;background:#ffe3ec;color:#c2456c;font-size:15.5px;padding:13px;margin:12px 0 4px}
+.gsheet .gbtn.gmain{background:linear-gradient(135deg,#f57fa4,#ef6f96);color:#fff}
+.ggrid{gap:10px}
+.gitem{border:0;border-radius:18px;padding:8px 8px 10px;box-shadow:0 2px 10px rgba(214,120,152,.10)}
+.gitem img{border-radius:14px}
+.gp{color:#e0557f}
+.gadd{border-radius:12px;background:#fff0f5;color:#d2496f}
+.gcart{border:0;border-radius:20px;background:#fff;box-shadow:0 2px 12px rgba(214,120,152,.10);padding:12px 14px}
+.gsheet .kgb-found{border:0;border-radius:18px;background:#fff;box-shadow:inset 0 0 0 1.5px #f6c9d9}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
@@ -516,7 +552,7 @@ async function giftAsk(op, extra, waitSec = 90){
 const won = n => (Number(n)||0).toLocaleString('ko-KR') + '원';
 function openGift(c){
   const box = document.createElement('div'); box.className = 'gbox';
-  box.innerHTML = `<div class="gsheet"><div class="ghead"><b>🎁 ${esc(c.name)}에게 선물</b><button class="lx gclose" aria-label="닫기">✕</button></div>
+  box.innerHTML = `<div class="gsheet"><div class="ghead"><div class="gtitle"><span class="gico">🎁</span><div><small>선물 보내기</small><b>${esc(c.name)}</b></div></div><button class="lx gclose" aria-label="닫기">✕</button></div>
     <div class="kgb-find"><button class="kgb-go gopen"><span>🎁</span><b>카카오에서 선물 찾기</b></button><button class="kgb-sub gsub"></button></div>
     <p class="kgb-help"><span class="ghelp"></span> <button class="kgb-link galt"></button></p>
     <p class="kgb-watch" hidden></p>
@@ -828,7 +864,7 @@ function render(){
   <div class="bar"><button class="link" data-act="logout">토큰 다시 넣기</button></div></main>`;
   const ton = document.querySelector('.tab.on'); if (ton && ton.parentElement) { const bar = ton.parentElement; const x = ton.offsetLeft - (bar.clientWidth - ton.offsetWidth)/2; if (x > 0 || bar.scrollLeft) bar.scrollLeft = Math.max(0, x); }
 }
-const APP_VER = '20261010-05';
+const APP_VER = '20261010-06';
 // 새 버전이 올라오면 새로고침 없이 자동으로 바뀜 (캐시를 피해서 새 주소로 다시 열기, 고치는 중이면 끝날 때까지 기다림)
 async function checkVer(){ try { const r = await fetch('version.txt?'+Date.now(), {cache:'no-store'}); if (r.ok) { const v = (await r.text()).trim(); if (v && v !== APP_VER && !(typeof editingNow==='function' && editingNow())) { const u = new URL(location.href); u.searchParams.set('v', v); location.replace(u.toString()); } } } catch(e){} }
 setInterval(checkVer, 15000); document.addEventListener('visibilitychange', () => { if (!document.hidden) checkVer(); }); setTimeout(checkVer, 3000);
