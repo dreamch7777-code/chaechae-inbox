@@ -779,9 +779,19 @@ function stLabel(c){
   return (c.draftMessages||[]).length ? '답장 대기' : '읽기만';
 }
 function editingNow(){ const a=document.activeElement; return !!(a && a.dataset && a.dataset.ed) || Object.keys(saveTimers).length>0; }
+const CHO = 'ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ';
+// 초성 검색: "ㄴㄲ" → 눈깔, "무ㄹ" → 무료 처럼 글자마다 초성이든 완성 글자든 맞춰 봄
+function nameMatch(name, q){
+  const n = String(name||'').toLowerCase().replace(/\s+/g,''); q = String(q||'').toLowerCase().replace(/\s+/g,'');
+  if (!q) return true; if (n.includes(q)) return true;
+  const cho = ch => { const k = ch.charCodeAt(0) - 0xAC00; return (k >= 0 && k < 11172) ? CHO[Math.floor(k / 588)] : ch; };
+  const eq = (nc, qc) => nc === qc || (CHO.includes(qc) && cho(nc) === qc);
+  for (let i = 0; i + q.length <= n.length; i++){ let ok = true; for (let j = 0; j < q.length; j++) if (!eq(n[i+j], q[j])) { ok = false; break; } if (ok) return true; }
+  return false;
+}
 function gridHtml(list){
   const q = state.q.trim().toLowerCase();
-  const shown = q ? list.filter(c => String(c.name||'').toLowerCase().includes(q)) : list;
+  const shown = q ? list.filter(c => nameMatch(c.name, q)) : list;
   if (!shown.length) return `<div class="empty" style="padding:24px 0">${q?'검색 결과가 없어요':'비어 있어요 ✨'}</div>`;
   const tone = l => /답장 대기/.test(l) ? 'wait' : /확인/.test(l) ? 'chk' : /보냄/.test(l) ? 'ok' : /못/.test(l) ? 'bad' : /발송 중/.test(l) ? 'go' : 'dim';
   return shown.map(c => { const l = stLabel(c); return `<button class="pick ${c.id===state.sel?'on':''}" data-pick="${esc(c.id)}"><img class="pav" src="${esc(avatarSrc(c))}" alt="" loading="lazy" onerror="this.onerror=null;this.src=DEFAULT_AV"><span class="pt"><span class="pn">${esc(c.name)}</span><span class="ps ${tone(l)}">${esc(l)}</span></span></button>`; }).join('');
@@ -807,7 +817,7 @@ function render(){
   <div class="bar"><button class="link" data-act="logout">토큰 다시 넣기</button></div></main>`;
   const ton = document.querySelector('.tab.on'); if (ton && ton.parentElement) { const bar = ton.parentElement; const x = ton.offsetLeft - (bar.clientWidth - ton.offsetWidth)/2; if (x > 0 || bar.scrollLeft) bar.scrollLeft = Math.max(0, x); }
 }
-const APP_VER = '20261009-03';
+const APP_VER = '20261010-01';
 // 새 버전이 올라오면 새로고침 없이 자동으로 바뀜 (캐시를 피해서 새 주소로 다시 열기, 고치는 중이면 끝날 때까지 기다림)
 async function checkVer(){ try { const r = await fetch('version.txt?'+Date.now(), {cache:'no-store'}); if (r.ok) { const v = (await r.text()).trim(); if (v && v !== APP_VER && !(typeof editingNow==='function' && editingNow())) { const u = new URL(location.href); u.searchParams.set('v', v); location.replace(u.toString()); } } } catch(e){} }
 setInterval(checkVer, 15000); document.addEventListener('visibilitychange', () => { if (!document.hidden) checkVer(); }); setTimeout(checkVer, 3000);
