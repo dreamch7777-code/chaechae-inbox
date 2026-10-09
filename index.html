@@ -627,7 +627,7 @@ function openGift(c){
   }
   let tab = 'rec', sex = '', recPage = 0;
   box.querySelectorAll('.gsex button').forEach(b => b.onclick = () => { sex = b.dataset.g; box.querySelectorAll('.gsex button').forEach(x => x.classList.toggle('on', x === b)); });
-  box.querySelectorAll('.grt').forEach(t => t.onclick = () => { tab = t.dataset.t; box.querySelectorAll('.grt').forEach(x => x.classList.toggle('on', x === t)); box.querySelector('.grform').hidden = tab === 'wish'; box.querySelector('.gsearch').textContent = tab === 'rec' ? '추천 받기' : '검색하기'; box.querySelector('.gq').placeholder = tab === 'rec' ? '예: 30대 남자, 커피 좋아함, 3만원대 (비워도 돼요)' : '상품명 · 브랜드 (예: 스타벅스)'; recPage = 0; if (tab === 'wish') showList(loadW(), '찜 (LIVE와 같이 봐요)'); else box.querySelector('.grlist').innerHTML = ''; });
+  box.querySelectorAll('.grt').forEach(t => t.onclick = () => { tab = t.dataset.t; box.querySelectorAll('.grt').forEach(x => x.classList.toggle('on', x === t)); box.querySelector('.grform').hidden = tab === 'wish'; box.querySelector('.gsearch').textContent = tab === 'rec' ? '추천 받기' : '검색하기'; box.querySelector('.gq').placeholder = tab === 'rec' ? '예: 30대 남자, 커피 좋아함' : '상품 이름 (예: 스타벅스)'; recPage = 0; if (tab === 'wish') showList(loadW(), '찜 (LIVE와 같이 봐요)'); else box.querySelector('.grlist').innerHTML = ''; });
   async function search(){
     let q = box.querySelector('.gq').value.trim();
     if (tab === 'find' && !q) return toast('찾을 상품명을 적어 주세요');
@@ -890,7 +890,7 @@ function render(){
   <div class="bar"><button class="link" data-act="logout">토큰 다시 넣기</button></div></main>`;
   const ton = document.querySelector('.tab.on'); if (ton && ton.parentElement) { const bar = ton.parentElement; const x = ton.offsetLeft - (bar.clientWidth - ton.offsetWidth)/2; if (x > 0 || bar.scrollLeft) bar.scrollLeft = Math.max(0, x); }
 }
-const APP_VER = '20261010-07';
+const APP_VER = '20261010-08';
 // 새 버전이 올라오면 새로고침 없이 자동으로 바뀜 (캐시를 피해서 새 주소로 다시 열기, 고치는 중이면 끝날 때까지 기다림)
 async function checkVer(){ try { const r = await fetch('version.txt?'+Date.now(), {cache:'no-store'}); if (r.ok) { const v = (await r.text()).trim(); if (v && v !== APP_VER && !(typeof editingNow==='function' && editingNow())) { const u = new URL(location.href); u.searchParams.set('v', v); location.replace(u.toString()); } } } catch(e){} }
 setInterval(checkVer, 15000); document.addEventListener('visibilitychange', () => { if (!document.hidden) checkVer(); }); setTimeout(checkVer, 3000);
