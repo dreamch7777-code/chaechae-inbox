@@ -385,6 +385,7 @@ details.older .msgs{margin-top:0}
 .ldots{display:flex;gap:6px;margin-top:12px}.ldots i{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.3)}.ldots i.on{background:#fff}
 .lsaveall{background:rgba(255,255,255,.18);color:#fff}
 .bvid video{display:block;width:100%;max-width:260px;border-radius:12px;background:#000}
+.mini.ico{font-size:22px;padding:7px 0;line-height:1}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
@@ -827,7 +828,7 @@ function render(){
   <div class="bar"><button class="link" data-act="logout">토큰 다시 넣기</button></div></main>`;
   const ton = document.querySelector('.tab.on'); if (ton && ton.parentElement) { const bar = ton.parentElement; const x = ton.offsetLeft - (bar.clientWidth - ton.offsetWidth)/2; if (x > 0 || bar.scrollLeft) bar.scrollLeft = Math.max(0, x); }
 }
-const APP_VER = '20261010-04';
+const APP_VER = '20261010-05';
 // 새 버전이 올라오면 새로고침 없이 자동으로 바뀜 (캐시를 피해서 새 주소로 다시 열기, 고치는 중이면 끝날 때까지 기다림)
 async function checkVer(){ try { const r = await fetch('version.txt?'+Date.now(), {cache:'no-store'}); if (r.ok) { const v = (await r.text()).trim(); if (v && v !== APP_VER && !(typeof editingNow==='function' && editingNow())) { const u = new URL(location.href); u.searchParams.set('v', v); location.replace(u.toString()); } } } catch(e){} }
 setInterval(checkVer, 15000); document.addEventListener('visibilitychange', () => { if (!document.hidden) checkVer(); }); setTimeout(checkVer, 3000);
@@ -1030,7 +1031,7 @@ function card(c){
     ? `<div class="msgs" data-dl="${esc(c.id)}">${lines.map((t,i)=> t.startsWith('🎬동영상:') ? `<div class="b draft dedit bimg bvid" data-ed="${esc(c.id)}" data-i="${i}" data-line="${esc(t)}"><video data-outv="${esc(t.slice(t.indexOf(':')+1))}" controls playsinline preload="metadata"></video></div>` : t.startsWith('📷사진:') ? `<div class="b draft dedit bimg" data-ed="${esc(c.id)}" data-i="${i}" data-line="${esc(t)}"><img data-out="${esc(t.slice(t.indexOf(':')+1))}" alt="사진"></div>` : `<div class="b draft dedit" contenteditable="true" data-ed="${esc(c.id)}" data-i="${i}">${esc(t)}</div>`).join('')}</div>
        <div class="saveinfo" data-si="${esc(c.id)}">${esc(state.saveInfo[c.id]||'말풍선을 누르면 바로 고칠 수 있어요. 고친 건 자동 저장돼요')}</div>
        <div class="tonerow">${[['banmal','반말'],['banjon','반존대'],['jon','존댓말']].map(([k,l])=>`<button class="tone ${c.tone===k?'on':''}" data-act="tone" data-tone="${k}" data-id="${esc(c.id)}">${l}</button>`).join('')}</div>
-       <div class="minirow"><button class="mini" data-act="addline" data-id="${esc(c.id)}">＋ 말풍선</button><button class="mini ${state.emoOpen[c.id]?'on':''}" data-act="emotoggle" data-id="${esc(c.id)}">${state.emoOpen[c.id]?'♡ 임티 닫기':'♡ 임티'}</button><button class="mini" data-act="photo" data-id="${esc(c.id)}">📸 사진·영상</button><button class="mini" data-act="gift" data-id="${esc(c.id)}">🎁 선물</button></div>
+       <div class="minirow"><button class="mini ico" data-act="addline" data-id="${esc(c.id)}" aria-label="말풍선 추가" title="말풍선 추가">💬</button><button class="mini ico ${state.emoOpen[c.id]?'on':''}" data-act="emotoggle" data-id="${esc(c.id)}" aria-label="임티" title="임티">🐰</button><button class="mini ico" data-act="photo" data-id="${esc(c.id)}" aria-label="사진·영상 넣기" title="사진·영상 넣기">📷</button><button class="mini ico" data-act="gift" data-id="${esc(c.id)}" aria-label="선물" title="선물">🎁</button></div>
        ${state.emoOpen[c.id]?emoPicker(c.id):''}`
     : `<div class="msgs">${lines.map(t=> t.startsWith('🎬동영상:') ? `<div class="b draft bimg bvid"><video data-outv="${esc(t.slice(t.indexOf(':')+1))}" controls playsinline preload="metadata"></video></div>` : t.startsWith('📷사진:') ? `<div class="b draft bimg"><img data-out="${esc(t.slice(t.indexOf(':')+1))}" alt="사진"></div>` : `<div class="b draft">${esc(t)}</div>`).join('')}</div>`);
   let btns = '';
