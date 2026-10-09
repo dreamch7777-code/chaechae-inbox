@@ -439,6 +439,14 @@ details.older .msgs{margin-top:0}
 .gsheet .kgb-find{grid-template-columns:1fr 1fr!important;gap:8px}
 .gsheet .kgb-go{padding:11px 10px;font-size:14.5px;border-radius:16px;box-shadow:0 4px 12px rgba(239,111,150,.25)}
 .gsheet .kgb-sub{justify-self:stretch;border-radius:16px;padding:11px 10px;font-size:14px}
+
+.mgrid{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:5px;align-self:flex-end;max-width:100%}
+.compose .b.mtile{position:relative;width:92px;height:92px;padding:0!important;border-radius:14px!important;overflow:hidden;background:#f6e3ec;box-shadow:none!important;cursor:pointer;max-width:none}
+.mtile img,.mtile video{display:block;width:100%!important;height:100%!important;max-width:none!important;object-fit:cover;border-radius:0!important;min-height:0!important;background:#e9dbe2;pointer-events:none}
+.mplay{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:34px;height:34px;border-radius:50%;background:rgba(40,20,30,.45);color:#fff;display:grid;place-items:center;pointer-events:none}
+.mprog{position:absolute;inset:0;display:grid;place-items:center;background:rgba(255,255,255,.55);color:#d2496f;font-weight:800;font-size:15px}
+.mx{position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:50%;border:0;background:rgba(40,20,30,.55);color:#fff;font-size:11px;line-height:22px;padding:0;cursor:pointer}
+.lpage video{max-width:100%;max-height:78vh;border-radius:8px;background:#000}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
@@ -468,6 +476,7 @@ const IC = (() => {
     bunny: sz => w('<path d="M9 9.2C7.6 6.4 7.4 3.4 8.6 3.1c1.3-.3 2.4 2.6 2.6 5.6M15 9.2c1.4-2.8 1.6-5.8.4-6.1-1.3-.3-2.4 2.6-2.6 5.6"/><path d="M12 8.6c-4 0-7 2.6-7 6s3 5.9 7 5.9 7-2.5 7-5.9-3-6-7-6z"/><path d="M9.4 14.2h.01M14.6 14.2h.01" stroke-width="2.6"/><path d="M10.8 16.6c.7.5 1.7.5 2.4 0"/>', sz),
     camera: sz => w('<path d="M4.5 8.2c0-1 .8-1.8 1.8-1.8h1.6l1.4-2h5.4l1.4 2h1.6c1 0 1.8.8 1.8 1.8v9.3c0 1-.8 1.8-1.8 1.8H6.3c-1 0-1.8-.8-1.8-1.8z"/><circle cx="12" cy="12.7" r="3.4"/><path d="M17 9.4h.01" stroke-width="2.6"/>', sz),
     gift: sz => w('<rect x="4" y="9" width="16" height="11" rx="2.2"/><path d="M3.2 9h17.6M12 9v11"/><path d="M12 9c-1.6-2.9-5.3-4.2-5.7-1.9C6 8.6 9 9 12 9zM12 9c1.6-2.9 5.3-4.2 5.7-1.9C18 8.6 15 9 12 9z"/>', sz),
+    play: sz => `<svg class="ic" width="${sz}" height="${sz}" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z"/></svg>`,
     link: sz => w('<path d="M10 14a4 4 0 0 0 5.7 0l2.6-2.6a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-2.6 2.6a4 4 0 0 0 5.7 5.7l1-1"/>', sz),
     heart: (sz, on) => `<svg class="ic" width="${sz}" height="${sz}" viewBox="0 0 24 24" fill="${on?'currentColor':'none'}" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" aria-hidden="true"><path d="M12 19.5s-7.5-4.4-7.5-9.6A4.1 4.1 0 0 1 12 7.6a4.1 4.1 0 0 1 7.5 2.3c0 5.2-7.5 9.6-7.5 9.6z"/></svg>`,
   };
@@ -900,7 +909,7 @@ function render(){
   <div class="bar"><button class="link" data-act="logout">토큰 다시 넣기</button></div></main>`;
   const ton = document.querySelector('.tab.on'); if (ton && ton.parentElement) { const bar = ton.parentElement; const x = ton.offsetLeft - (bar.clientWidth - ton.offsetWidth)/2; if (x > 0 || bar.scrollLeft) bar.scrollLeft = Math.max(0, x); }
 }
-const APP_VER = '20261010-10';
+const APP_VER = '20261010-11';
 // 새 버전이 올라오면 새로고침 없이 자동으로 바뀜 (캐시를 피해서 새 주소로 다시 열기, 고치는 중이면 끝날 때까지 기다림)
 async function checkVer(){ try { const r = await fetch('version.txt?'+Date.now(), {cache:'no-store'}); if (r.ok) { const v = (await r.text()).trim(); if (v && v !== APP_VER && !(typeof editingNow==='function' && editingNow())) { const u = new URL(location.href); u.searchParams.set('v', v); location.replace(u.toString()); } } } catch(e){} }
 setInterval(checkVer, 15000); document.addEventListener('visibilitychange', () => { if (!document.hidden) checkVer(); }); setTimeout(checkVer, 3000);
@@ -982,7 +991,7 @@ async function loadShot(c){
   } catch(e){ state.shotMiss[c.id] = true; }
   render();
 }
-state.mediaUrl = {}; const mediaBusy = {}; state.uploading = new Set();
+state.mediaUrl = {}; const mediaBusy = {}; state.uploading = new Set(); state.upProg = {};
 async function loadMedia(p){
   if (state.mediaUrl[p] || mediaBusy[p]) return; mediaBusy[p] = true;
   try { const r = await api(p, { headers:{ 'Accept':'application/vnd.github.raw+json' } });
@@ -1100,12 +1109,12 @@ function card(c){
   const editable = c.status!=='approved' && !done;
   const lines = draft.length ? draft : (editable ? [''] : []);
   const draftHtml = !lines.length ? '' : (editable
-    ? `<div class="msgs" data-dl="${esc(c.id)}">${lines.map((t,i)=> t.startsWith('🎬동영상:') ? `<div class="b draft dedit bimg bvid" data-ed="${esc(c.id)}" data-i="${i}" data-line="${esc(t)}"><video data-outv="${esc(t.slice(t.indexOf(':')+1))}" controls playsinline preload="metadata"></video></div>` : t.startsWith('📷사진:') ? `<div class="b draft dedit bimg" data-ed="${esc(c.id)}" data-i="${i}" data-line="${esc(t)}"><img data-out="${esc(t.slice(t.indexOf(':')+1))}" alt="사진"></div>` : `<div class="b draft dedit" contenteditable="true" data-ed="${esc(c.id)}" data-i="${i}">${esc(t)}</div>`).join('')}</div>
+    ? `<div class="msgs" data-dl="${esc(c.id)}">${draftLinesHtml(c.id, lines, true)}</div>
        <div class="saveinfo" data-si="${esc(c.id)}">${esc(state.saveInfo[c.id]||'말풍선을 누르면 바로 고칠 수 있어요. 고친 건 자동 저장돼요')}</div>
        <div class="tonerow">${[['banmal','반말'],['banjon','반존대'],['jon','존댓말']].map(([k,l])=>`<button class="tone ${c.tone===k?'on':''}" data-act="tone" data-tone="${k}" data-id="${esc(c.id)}">${l}</button>`).join('')}</div>
        <div class="minirow"><button class="mini ico" data-act="addline" data-id="${esc(c.id)}" aria-label="말풍선 추가" title="말풍선 추가">${IC.bubble(22)}</button><button class="mini ico ${state.emoOpen[c.id]?'on':''}" data-act="emotoggle" data-id="${esc(c.id)}" aria-label="임티" title="임티">${IC.bunny(22)}</button><button class="mini ico" data-act="photo" data-id="${esc(c.id)}" aria-label="사진·영상 넣기" title="사진·영상 넣기">${IC.camera(22)}</button><button class="mini ico" data-act="gift" data-id="${esc(c.id)}" aria-label="선물" title="선물">${IC.gift(22)}</button></div>
        ${state.emoOpen[c.id]?emoPicker(c.id):''}`
-    : `<div class="msgs">${lines.map(t=> t.startsWith('🎬동영상:') ? `<div class="b draft bimg bvid"><video data-outv="${esc(t.slice(t.indexOf(':')+1))}" controls playsinline preload="metadata"></video></div>` : t.startsWith('📷사진:') ? `<div class="b draft bimg"><img data-out="${esc(t.slice(t.indexOf(':')+1))}" alt="사진"></div>` : `<div class="b draft">${esc(t)}</div>`).join('')}</div>`);
+    : `<div class="msgs">${draftLinesHtml(c.id, lines, false)}</div>`);
   let btns = '';
   if (c.status==='approved' && s!=='sent' && s!=='sending') btns = `<div class="btns" style="grid-template-columns:1fr 1fr"><button class="btn" data-act="unapprove" data-id="${esc(c.id)}">승인 취소</button><button class="btn del" data-act="delete" data-id="${esc(c.id)}">이번만 제외</button></div>`;
   else if (done) btns = `<div class="btns" style="grid-template-columns:1fr"><button class="btn del" data-act="delete" data-id="${esc(c.id)}">이번만 제외</button></div>`;
@@ -1120,6 +1129,39 @@ function card(c){
     ${(draftHtml)?`<div class="compose${editable?' on':''}"><div class="clbl">${c.status==='approved'?'승인한 답장':'보낼 답장'}</div>${draftHtml}</div>`:''}
     ${status}${btns}<button class="never" data-act="never" data-id="${esc(c.id)}">🚫 다음부터 이 사람 안 가져오기</button></div>`;
 }
+
+// 보낼 답장: 글은 말풍선, 사진·영상은 작은 네모 칸으로 모아서 (누르면 크게, ✕로 빼기)
+function draftLinesHtml(id, lines, editable){
+  let out = '', grid = '';
+  const flush = () => { if (grid) { out += `<div class="mgrid">${grid}</div>`; grid = ''; } };
+  lines.forEach((t, i) => {
+    if (isMediaLine(t)) {
+      const p = t.slice(t.indexOf(':') + 1), vid = t.startsWith('🎬');
+      const pr = state.upProg[p];
+      grid += `<div class="b draft bimg mtile${editable ? ' dedit' : ''}" ${editable ? `data-ed="${esc(id)}" data-i="${i}"` : ''} data-line="${esc(t)}" data-id="${esc(id)}" data-mview="${i}">${vid ? `<video data-outv="${esc(p)}" muted playsinline preload="metadata"></video><span class="mplay">${IC.play(18)}</span>` : `<img data-out="${esc(p)}" alt="사진">`}${pr != null ? `<span class="mprog" data-prog="${esc(p)}">${pr}%</span>` : ''}${editable ? `<button class="mx" data-act="delmedia" data-id="${esc(id)}" data-i="${i}" aria-label="빼기">✕</button>` : ''}</div>`;
+    } else { flush(); out += editable ? `<div class="b draft dedit" contenteditable="true" data-ed="${esc(id)}" data-i="${i}">${esc(t)}</div>` : `<div class="b draft">${esc(t)}</div>`; }
+  });
+  flush(); return out;
+}
+function openMediaViewer(items, start){
+  const box = document.createElement('div'); box.className = 'lbox';
+  const many = items.length > 1;
+  box.innerHTML = `<button class="lx lclose" aria-label="닫기">✕</button>${many?`<div class="lcount"><b>${start+1}</b> / ${items.length}</div>`:''}<div class="lscroll lpager">${items.map(it => `<div class="lpage">${it.vid ? `<video src="${it.src}" controls playsinline preload="metadata"></video>` : `<img alt="사진" src="${it.src}">`}</div>`).join('')}</div>${many?`<div class="ldots">${items.map((_,i)=>`<i class="${i===start?'on':''}"></i>`).join('')}</div>`:''}`;
+  document.body.appendChild(box); document.body.style.overflow = 'hidden';
+  const pager = box.querySelector('.lpager'); let cur = start;
+  requestAnimationFrame(() => { pager.scrollLeft = start * pager.clientWidth; });
+  pager.addEventListener('scroll', () => { const i = Math.round(pager.scrollLeft / Math.max(1, pager.clientWidth)); if (i === cur) return; cur = i; const b = box.querySelector('.lcount b'); if (b) b.textContent = i + 1; box.querySelectorAll('.ldots i').forEach((d, k) => d.classList.toggle('on', k === i)); box.querySelectorAll('video').forEach(v => v.pause()); }, { passive:true });
+  const close = () => { box.querySelectorAll('video').forEach(v => v.pause()); box.remove(); document.body.style.overflow = ''; };
+  box.addEventListener('click', e => { if (e.target === box || e.target.classList.contains('lpage') || e.target.closest('.lclose')) close(); });
+}
+document.addEventListener('click', e => {
+  const tile = e.target.closest && e.target.closest('[data-mview]'); if (!tile || e.target.closest('.mx')) return;
+  e.preventDefault(); e.stopPropagation();
+  const tiles = [...tile.closest('.msgs').querySelectorAll('[data-mview]')];
+  const items = tiles.map(t => { const l = t.dataset.line, p = l.slice(l.indexOf(':') + 1); return { vid: l.startsWith('🎬'), src: outCache[p] || '' }; }).filter(x => x.src);
+  if (!items.length) { toast('아직 불러오는 중이에요'); return; }
+  openMediaViewer(items, Math.max(0, tiles.indexOf(tile)));
+}, true);
 function emoPicker(id){
   return `<div class="emo" data-emo="${esc(id)}">${emoInner(id)}</div>`;
 }
@@ -1135,7 +1177,7 @@ const saveTimers = {}; const lastFocus = {};
 // 말풍선 꾹 누르기(0.6초) → 삭제 버튼
 let pressT = null, pressEl = null, pressXY = null;
 document.addEventListener('pointerdown', e => {
-  const b = e.target.closest && e.target.closest('.dedit'); if (!b) return;
+  const b = e.target.closest && e.target.closest('.dedit:not(.mtile)'); if (!b) return;
   pressEl = b; pressXY = [e.clientX, e.clientY]; clearTimeout(pressT);
   pressT = setTimeout(() => {
     document.querySelectorAll('.bdel').forEach(x => x.remove());
@@ -1145,6 +1187,17 @@ document.addEventListener('pointerdown', e => {
 });
 document.addEventListener('pointermove', e => { if (pressXY && Math.hypot(e.clientX - pressXY[0], e.clientY - pressXY[1]) > 10) clearTimeout(pressT); });
 ['pointerup','pointercancel'].forEach(t => document.addEventListener(t, () => clearTimeout(pressT)));
+function setProg(p, pc){ state.upProg[p] = pc; document.querySelectorAll(`[data-prog="${CSS.escape(p)}"]`).forEach(x => x.textContent = pc + '%'); }
+function putProgress(path, body, onp){
+  return new Promise(ok => {
+    const x = new XMLHttpRequest(); x.open('PUT', `https://api.github.com/repos/${repo}/contents/${path}`);
+    x.setRequestHeader('Authorization', `Bearer ${token}`); x.setRequestHeader('Accept', 'application/vnd.github+json'); x.setRequestHeader('Content-Type', 'application/json');
+    x.upload.onprogress = e => { if (e.lengthComputable) onp(Math.min(99, Math.round(e.loaded / e.total * 100))); };
+    x.onload = () => ok({ ok: x.status >= 200 && x.status < 300, status: x.status });
+    x.onerror = () => ok({ ok: false, status: 0 });
+    x.send(body);
+  });
+}
 function fileB64(file){ return new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1]); r.onerror = () => no(new Error('파일을 못 읽었어요')); r.readAsDataURL(file); }); }
 async function shrinkPhoto(file){
   // 카톡으로 보내기 좋게 긴 쪽 1600px · JPEG 로 줄여서 base64
@@ -1164,8 +1217,8 @@ async function loadOutImgs(){
   }
   for (const v of document.querySelectorAll('video[data-outv]:not([src])')) {
     const p = v.dataset.outv;
-    if (!outCache[p]) { try { const r = await api(p, { headers:{ 'Accept':'application/vnd.github.raw+json' } }); if (r.ok) outCache[p] = URL.createObjectURL(await r.blob()); } catch(e){} }
-    if (outCache[p]) v.src = outCache[p];
+    if (!outCache[p]) { try { const r = await api(p, { headers:{ 'Accept':'application/vnd.github.raw+json' } }); if (r.ok) { const b = await r.blob(); const ty = /\.mov$/i.test(p) ? 'video/quicktime' : /\.webm$/i.test(p) ? 'video/webm' : 'video/mp4'; outCache[p] = URL.createObjectURL(new Blob([b], { type: ty })); } } catch(e){} }
+    if (outCache[p]) v.src = outCache[p] + '#t=0.1';
   }
 }
 setInterval(loadOutImgs, 1500);
@@ -1308,7 +1361,7 @@ document.addEventListener('click', e => {
       }
       if (!jobs.length) return;
       const cur = readLines(id); const lines = [...(cur.length ? cur : (c.draftMessages||[])), ...jobs.map(j => j.line)];
-      jobs.forEach(j => state.uploading.add(j.path));
+      jobs.forEach(j => { state.uploading.add(j.path); state.upProg[j.path] = 0; });
       c.draftMessages = lines; mutate(id, x => { x.draftMessages = lines; x.toneBase = null; if (x.status !== 'approved') x.status = 'draft'; }, `사진·동영상 추가: ${c.name}`);
       toast(`${jobs.length}개 넣었어요 — 올리는 중…`);
       // 2) 뒤에서 동시에 올리기
@@ -1316,11 +1369,11 @@ document.addEventListener('click', e => {
         try {
           const b64 = j.vid ? await fileB64(j.f) : await shrinkPhoto(j.f);
           const body = JSON.stringify({ message:`${j.vid?'동영상':'사진'} 올림: ${c.name}`, content: b64 });
-          let r; for (let t = 0; t < 5; t++) { r = await api(j.path, { method:'PUT', headers:{'Content-Type':'application/json'}, body }); if (r.ok || r.status !== 409) break; await new Promise(z => setTimeout(z, 600 + 700 * t + Math.random() * 500)); }
+          let r; for (let t = 0; t < 5; t++) { r = await putProgress(j.path, body, pc => setProg(j.path, pc)); if (r.ok || r.status !== 409) break; await new Promise(z => setTimeout(z, 600 + 700 * t + Math.random() * 500)); }
           if (!r.ok) throw new Error(r.status === 413 ? '파일이 너무 커요' : r.status === 422 ? '파일이 너무 크거나 이름이 겹쳐요' : '업로드 실패');
           return true;
         } catch(e){ return e.message || String(e); }
-        finally { state.uploading.delete(j.path); }
+        finally { state.uploading.delete(j.path); delete state.upProg[j.path]; document.querySelectorAll(`[data-prog="${CSS.escape(j.path)}"]`).forEach(x => x.remove()); }
       }));
       const bad = jobs.filter((j, i) => res[i] !== true);
       if (bad.length) {
@@ -1331,6 +1384,11 @@ document.addEventListener('click', e => {
       } else toast('다 올렸어요 — 승인하면 카톡으로 같이 가요');
     };
     inp.click();
+  } else if (act==='delmedia'){
+    const k = +t.dataset.i; const cur = bubblesOf(id).length ? readLines(id) : (c.draftMessages||[]);
+    const all = []; bubblesOf(id).forEach((el) => all.push(el)); 
+    const keep = cur.filter((_, j) => j !== k);
+    c.draftMessages = keep; mutate(id, x => { x.draftMessages = keep; }, `사진·영상 빼기: ${c.name}`); toast('뺐어요');
   } else if (act==='addline'){
     const box = document.querySelector(`[data-dl="${CSS.escape(id)}"]`); if (!box) return;
     const i = bubblesOf(id).length; box.insertAdjacentHTML('beforeend', `<div class="b draft dedit" contenteditable="true" data-ed="${esc(id)}" data-i="${i}"></div>`);
