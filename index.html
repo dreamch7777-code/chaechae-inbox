@@ -150,7 +150,12 @@ details{margin-top:10px} summary{cursor:pointer;color:var(--sub);font-size:14px}
 .ecat.star{font-size:15px;color:#f5b400}
 .ecat.star.on{color:#fff}
 .stkph,.stkimg,.stkcov{display:block;background-repeat:no-repeat;border-radius:10px}
-.stkcov{width:38px;height:38px}
+.stkcov{width:32px;height:32px;background-size:contain}
+.ktabs{display:flex;gap:0;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:-10px -10px 8px;padding:0 6px;border-bottom:1px solid var(--line);background:var(--card);border-radius:16px 16px 0 0}
+.ktab{flex:none;width:46px;height:46px;border:0;border-bottom:3px solid transparent;background:transparent;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:20px;color:var(--text);padding:0;opacity:.55}
+.ktab.on{border-bottom-color:var(--chipOn);opacity:1}
+.ktab .stkcov{background-repeat:no-repeat;background-position:center;border-radius:8px}
+.stkgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:2px;max-height:380px;overflow-y:auto;-webkit-overflow-scrolling:touch;justify-items:center}
 .stkpk{flex:none;border:2px solid transparent;background:var(--card);border-radius:14px;padding:3px;cursor:pointer}
 .stkpk.on{border-color:var(--chipOn)}
 .stkbtn{border:0;background:transparent;padding:2px;cursor:pointer;border-radius:12px}
@@ -916,7 +921,7 @@ function render(){
   <div class="bar"><button class="link" data-act="logout">토큰 다시 넣기</button></div></main>`;
   const ton = document.querySelector('.tab.on'); if (ton && ton.parentElement) { const bar = ton.parentElement; const x = ton.offsetLeft - (bar.clientWidth - ton.offsetWidth)/2; if (x > 0 || bar.scrollLeft) bar.scrollLeft = Math.max(0, x); }
 }
-const APP_VER = '20261016-2';
+const APP_VER = '20261016-3';
 // 새 버전이 올라오면 새로고침 없이 자동으로 바뀜 (캐시를 피해서 새 주소로 다시 열기, 고치는 중이면 끝날 때까지 기다림)
 async function checkVer(){ try { const r = await fetch('version.txt?'+Date.now(), {cache:'no-store'}); if (r.ok) { const v = (await r.text()).trim(); if (v && v !== APP_VER && !(typeof editingNow==='function' && editingNow())) { const u = new URL(location.href); u.searchParams.set('v', v); location.replace(u.toString()); } } } catch(e){} }
 setInterval(checkVer, 15000); document.addEventListener('visibilitychange', () => { if (!document.hidden) checkVer(); }); setTimeout(checkVer, 3000);
@@ -1195,22 +1200,27 @@ async function loadStkImgs(){
   document.querySelectorAll('.stkph[data-stkref]').forEach(el => { if (state.stk) { const h = stkHtml(el.dataset.stkref, +el.dataset.size); if (h) el.outerHTML = h; } });
 }
 setInterval(loadStkImgs, 700);
+function ktabs(id, stkMode){
+  const txt = `<button class="ktab ktxt ${stkMode?'':'on'}" data-act="emocat" data-id="${esc(id)}" data-cat="${esc(state.txtCat||EMO_CATS[0])}" aria-label="특수 임티">ෆ</button>`;
+  const packs = state.stk ? state.stk.packs : [];
+  const cur = state.stk ? (packs.find(x => String(x.id) === String(state.stkPack)) || packs[0]) : null;
+  return `<div class="ktabs">${txt}${packs.map(pk => `<button class="ktab ${stkMode && cur && pk.id===cur.id?'on':''}" data-act="stkpack" data-id="${esc(id)}" data-pack="${pk.id}" aria-label="스티커 묶음"><span class="stkcov" data-sheet="${esc(pk.cover)}"></span></button>`).join('')}${state.stk?'':'<span class="st" style="padding:12px">불러오는 중…</span>'}</div>`;
+}
 function stkPicker(id){
-  if (!state.stk) { stkLoad(); return '<span class="st">스티커 불러오는 중…</span>'; }
+  if (!state.stk) { stkLoad(); return ''; }
   const packs = state.stk.packs; const cur = packs.find(x => String(x.id) === String(state.stkPack)) || packs[0];
-  const cov = `<div class="ecats stkpacks">${packs.map(pk => `<button class="stkpk ${pk.id===cur.id?'on':''}" data-act="stkpack" data-id="${esc(id)}" data-pack="${pk.id}" aria-label="스티커 묶음"><span class="stkcov" data-sheet="${esc(pk.cover)}" style="background-size:contain;background-repeat:no-repeat"></span></button>`).join('')}</div>`;
-  const grid = cur.nums.map((n, i) => `<button class="stkbtn" data-act="stk" data-id="${esc(id)}" data-ref="${cur.id}/${n}" aria-label="스티커">${stkHtml(cur.id+'/'+n, 76)}</button>`).join('');
-  return `${cov}<div class="egrid stkgrid">${grid}</div>`;
+  const grid = cur.nums.map(n => `<button class="stkbtn" data-act="stk" data-id="${esc(id)}" data-ref="${cur.id}/${n}" aria-label="스티커">${stkHtml(cur.id+'/'+n, 76)}</button>`).join('');
+  return `<div class="stkgrid">${grid}</div>`;
 }
 function emoPicker(id){
   return `<div class="emo" data-emo="${esc(id)}">${emoInner(id)}</div>`;
 }
 function emoInner(id){
-  let cat = (state.emoCat==='★' || state.emoCat==='🧸' || EMO[state.emoCat]) ? state.emoCat : EMO_CATS[0];
-  if (cat==='🧸') return `<div class="ecats">${['🧸',...EMO_CATS].map(k=>`<button class="ecat ${k===cat?'on':''}" data-act="emocat" data-id="${esc(id)}" data-cat="${esc(k)}">${k==='🧸'?'🧸 스티커':esc(k)}</button>`).join('')}</div>${stkPicker(id)}`;
+  if (state.emoCat==='🧸') return ktabs(id, true) + stkPicker(id);
+  let cat = (state.emoCat==='★' || EMO[state.emoCat]) ? state.emoCat : EMO_CATS[0];
   if (cat==='★' && !state.emoCat && recentEmos().length < 6) cat = EMO_CATS[1];
   const items = cat==='★' ? recentEmos() : EMO[cat];
-  return `<div class="ehint">종류는 옆으로 넘겨요 →</div><div class="ecats">${['🧸',...EMO_CATS].map(k=>`<button class="ecat ${k===cat?'on':''} ${k==='★'?'star':''}" data-act="emocat" data-id="${esc(id)}" data-cat="${esc(k)}">${esc(k)}</button>`).join('')}</div>
+  return ktabs(id, false) + `<div class="ecats">${EMO_CATS.map(k=>`<button class="ecat ${k===cat?'on':''} ${k==='★'?'star':''}" data-act="emocat" data-id="${esc(id)}" data-cat="${esc(k)}">${esc(k)}</button>`).join('')}</div>
   <div class="egrid">${items.length?items.map(e=>`<button class="ei" data-act="emo" data-id="${esc(id)}" data-e="${esc(e)}">${esc(e)}</button>`).join(''):'<span class="st">아직 쓴 특수 임티가 없어요</span>'}</div>`;
 }
 // ---------- inline edit + autosave ----------
@@ -1335,8 +1345,8 @@ document.addEventListener('click', e => {
   if (act==='skiplist'){ state.skipOpen = !state.skipOpen; render(); return; }
   if (act==='unskip'){ const n = t.dataset.name; setSkip(n, false).then(ok => ok && toast(`${n} 카톡을 다시 가져와요 (다음 회차부터)`)); return; }
   if (act==='notif'){ Notification.requestPermission().then(p => { toast(p==='granted'?'알림 켰어요 🔔':'알림이 꺼져 있어요'); render(); }); return; }
-  if (act==='emocat'){ state.emoCat = t.dataset.cat; ls.set('cci_emocat', state.emoCat); const box=document.querySelector(`[data-emo="${CSS.escape(id)}"]`); if (box) box.innerHTML = emoInner(id); return; }
-  if (act==='stkpack'){ state.stkPack = t.dataset.pack; ls.set('cci_stkpack', state.stkPack); const b=t.closest('.emo'); if (b) b.innerHTML = emoInner(id); return; }
+  if (act==='emocat'){ state.emoCat = t.dataset.cat; if (t.dataset.cat!=='🧸') state.txtCat = t.dataset.cat; ls.set('cci_emocat', state.emoCat); const box=document.querySelector(`[data-emo="${CSS.escape(id)}"]`); if (box) box.innerHTML = emoInner(id); return; }
+  if (act==='stkpack'){ state.emoCat = '🧸'; ls.set('cci_emocat', '🧸'); state.stkPack = t.dataset.pack; ls.set('cci_stkpack', state.stkPack); const b=t.closest('.emo'); if (b) b.innerHTML = emoInner(id); return; }
   if (act==='stk'){ const ref = '🧸이모티콘:' + t.dataset.ref; const c0 = state.chats.find(x => x.id===id); if (!c0) return; const cur = bubblesOf(id).length ? readLines(id) : (c0.draftMessages||[]); const keep = [...cur, ref]; c0.draftMessages = keep; mutate(id, x => { x.draftMessages = keep; }, `스티커 넣기: ${c0.name}`); toast('스티커 넣었어요 🧸'); return; }
   if (act==='emo'){ const e2 = t.dataset.e; if (e2) { insertEmo(id, e2); noteEmo(e2); } return; }
   if (act==='emotoggle'){ state.emoOpen[id] = !state.emoOpen[id]; flushSave(id); const card=t.closest('.card'); const box=card && card.querySelector('.emo'); if (box) box.remove(); else t.closest('.minirow').insertAdjacentHTML('afterend', emoPicker(id)); t.classList.toggle('on', !!state.emoOpen[id]); return; }
