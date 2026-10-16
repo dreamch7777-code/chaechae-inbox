@@ -916,7 +916,7 @@ function render(){
   <div class="bar"><button class="link" data-act="logout">토큰 다시 넣기</button></div></main>`;
   const ton = document.querySelector('.tab.on'); if (ton && ton.parentElement) { const bar = ton.parentElement; const x = ton.offsetLeft - (bar.clientWidth - ton.offsetWidth)/2; if (x > 0 || bar.scrollLeft) bar.scrollLeft = Math.max(0, x); }
 }
-const APP_VER = '20261016-1';
+const APP_VER = '20261016-2';
 // 새 버전이 올라오면 새로고침 없이 자동으로 바뀜 (캐시를 피해서 새 주소로 다시 열기, 고치는 중이면 끝날 때까지 기다림)
 async function checkVer(){ try { const r = await fetch('version.txt?'+Date.now(), {cache:'no-store'}); if (r.ok) { const v = (await r.text()).trim(); if (v && v !== APP_VER && !(typeof editingNow==='function' && editingNow())) { const u = new URL(location.href); u.searchParams.set('v', v); location.replace(u.toString()); } } } catch(e){} }
 setInterval(checkVer, 15000); document.addEventListener('visibilitychange', () => { if (!document.hidden) checkVer(); }); setTimeout(checkVer, 3000);
@@ -1339,7 +1339,7 @@ document.addEventListener('click', e => {
   if (act==='stkpack'){ state.stkPack = t.dataset.pack; ls.set('cci_stkpack', state.stkPack); const b=t.closest('.emo'); if (b) b.innerHTML = emoInner(id); return; }
   if (act==='stk'){ const ref = '🧸이모티콘:' + t.dataset.ref; const c0 = state.chats.find(x => x.id===id); if (!c0) return; const cur = bubblesOf(id).length ? readLines(id) : (c0.draftMessages||[]); const keep = [...cur, ref]; c0.draftMessages = keep; mutate(id, x => { x.draftMessages = keep; }, `스티커 넣기: ${c0.name}`); toast('스티커 넣었어요 🧸'); return; }
   if (act==='emo'){ const e2 = t.dataset.e; if (e2) { insertEmo(id, e2); noteEmo(e2); } return; }
-  if (act==='emotoggle'){ state.emoOpen[id] = !state.emoOpen[id]; flushSave(id); const card=t.closest('.card'); const box=card && card.querySelector('.emo'); if (box) box.remove(); else t.closest('.minirow').insertAdjacentHTML('afterend', emoPicker(id)); t.textContent = state.emoOpen[id]?'♡ 임티 닫기':'♡ 임티'; t.classList.toggle('on', !!state.emoOpen[id]); return; }
+  if (act==='emotoggle'){ state.emoOpen[id] = !state.emoOpen[id]; flushSave(id); const card=t.closest('.card'); const box=card && card.querySelector('.emo'); if (box) box.remove(); else t.closest('.minirow').insertAdjacentHTML('afterend', emoPicker(id)); t.classList.toggle('on', !!state.emoOpen[id]); return; }
   if (act==='evdel'){ if (t.dataset.sure) { t.disabled = true; t.textContent = '지우는 중…'; delEvent(t.dataset.ev); } else { t.dataset.sure = '1'; t.textContent = '정말 삭제?'; t.classList.add('sure'); setTimeout(() => { if (t.isConnected) { delete t.dataset.sure; t.textContent = '삭제'; t.classList.remove('sure'); } }, 4000); } return; }
   if (act==='logout'){ ls.del('cci_token'); token=''; render(); return; }
   if (act==='purge'){
