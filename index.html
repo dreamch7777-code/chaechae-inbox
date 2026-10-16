@@ -149,6 +149,14 @@ details{margin-top:10px} summary{cursor:pointer;color:var(--sub);font-size:14px}
 .ecat.on{background:var(--chipOn);color:var(--chipOnText);border-color:var(--chipOn)}
 .ecat.star{font-size:15px;color:#f5b400}
 .ecat.star.on{color:#fff}
+.stkph,.stkimg,.stkcov{display:block;background-repeat:no-repeat;border-radius:10px}
+.stkcov{width:38px;height:38px}
+.stkpk{flex:none;border:2px solid transparent;background:var(--card);border-radius:14px;padding:3px;cursor:pointer}
+.stkpk.on{border-color:var(--chipOn)}
+.stkbtn{border:0;background:transparent;padding:2px;cursor:pointer;border-radius:12px}
+.stkbtn:active{background:var(--meSoft)}
+.mtile.stk{background:transparent!important}
+.mtile.stk .stkimg{width:100%!important;height:100%!important;background-size:calc(100% * 8) auto!important}
 .egrid{display:flex;flex-wrap:wrap;gap:7px;max-height:420px;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .ei{border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:14px;padding:11px 13px;font-size:17px;cursor:pointer;white-space:nowrap;font-family:inherit;min-width:52px}
 .ei:active{background:var(--meSoft)}
@@ -481,7 +489,8 @@ const IC = (() => {
     heart: (sz, on) => `<svg class="ic" width="${sz}" height="${sz}" viewBox="0 0 24 24" fill="${on?'currentColor':'none'}" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" aria-hidden="true"><path d="M12 19.5s-7.5-4.4-7.5-9.6A4.1 4.1 0 0 1 12 7.6a4.1 4.1 0 0 1 7.5 2.3c0 5.2-7.5 9.6-7.5 9.6z"/></svg>`,
   };
 })();
-const isMediaLine = l => /^(📷사진|🎬동영상):/.test(String(l||''));
+const isMediaLine = l => /^(📷사진|🎬동영상|🧸이모티콘):/.test(String(l||''));
+const isStk = l => /^🧸이모티콘:/.test(String(l||''));
 const hasBlank = arr => (arr||[]).some(t => !isMediaLine(t) && /\[[^\]]*\]/.test(t));
 const rid = () => Math.random().toString(36).slice(2,10) + Date.now().toString(36);
 function toast(t){ const el=$('#toast'); el.textContent=t; el.classList.add('on'); clearTimeout(toast._t); toast._t=setTimeout(()=>el.classList.remove('on'),2200); }
@@ -907,7 +916,7 @@ function render(){
   <div class="bar"><button class="link" data-act="logout">토큰 다시 넣기</button></div></main>`;
   const ton = document.querySelector('.tab.on'); if (ton && ton.parentElement) { const bar = ton.parentElement; const x = ton.offsetLeft - (bar.clientWidth - ton.offsetWidth)/2; if (x > 0 || bar.scrollLeft) bar.scrollLeft = Math.max(0, x); }
 }
-const APP_VER = '20261015-1';
+const APP_VER = '20261016-1';
 // 새 버전이 올라오면 새로고침 없이 자동으로 바뀜 (캐시를 피해서 새 주소로 다시 열기, 고치는 중이면 끝날 때까지 기다림)
 async function checkVer(){ try { const r = await fetch('version.txt?'+Date.now(), {cache:'no-store'}); if (r.ok) { const v = (await r.text()).trim(); if (v && v !== APP_VER && !(typeof editingNow==='function' && editingNow())) { const u = new URL(location.href); u.searchParams.set('v', v); location.replace(u.toString()); } } } catch(e){} }
 setInterval(checkVer, 15000); document.addEventListener('visibilitychange', () => { if (!document.hidden) checkVer(); }); setTimeout(checkVer, 3000);
@@ -1133,7 +1142,9 @@ function draftLinesHtml(id, lines, editable){
   let out = '', grid = '';
   const flush = () => { if (grid) { out += `<div class="mgrid">${grid}</div>`; grid = ''; } };
   lines.forEach((t, i) => {
-    if (isMediaLine(t)) {
+    if (isStk(t)) {
+      grid += `<div class="b draft bimg mtile stk${editable ? ' dedit' : ''}" ${editable ? `data-ed="${esc(id)}" data-i="${i}"` : ''} data-line="${esc(t)}" data-id="${esc(id)}">${stkHtml(t.slice(t.indexOf(':') + 1), 84)}${editable ? `<button class="mx" data-act="delmedia" data-id="${esc(id)}" data-i="${i}" aria-label="빼기">✕</button>` : ''}</div>`;
+    } else if (isMediaLine(t)) {
       const p = t.slice(t.indexOf(':') + 1), vid = t.startsWith('🎬');
       const pr = state.upProg[p];
       grid += `<div class="b draft bimg mtile${editable ? ' dedit' : ''}" ${editable ? `data-ed="${esc(id)}" data-i="${i}"` : ''} data-line="${esc(t)}" data-id="${esc(id)}" data-mview="${i}">${vid ? `<video data-outv="${esc(p)}" muted playsinline preload="metadata"></video><span class="mplay">${IC.play(18)}</span>` : `<img data-out="${esc(p)}" alt="사진">`}${pr != null ? `<span class="mprog" data-prog="${esc(p)}">${pr}%</span>` : ''}${editable ? `<button class="mx" data-act="delmedia" data-id="${esc(id)}" data-i="${i}" aria-label="빼기">✕</button>` : ''}</div>`;
@@ -1160,14 +1171,46 @@ document.addEventListener('click', e => {
   if (!items.length) { toast('아직 불러오는 중이에요'); return; }
   openMediaViewer(items, Math.max(0, tiles.indexOf(tile)));
 }, true);
+// ---------- 카톡 스티커(이모티콘) ----------
+state.stk = null; state.stkPack = ls.get('cci_stkpack') || '';
+async function stkLoad(){
+  if (state.stk || state.stkLoading) return; state.stkLoading = true;
+  try { const r = await api('emoticons/index.json', { headers:{ 'Accept':'application/vnd.github.raw+json' } }); if (r.ok) { state.stk = await r.json(); if (!state.stkPack && state.stk.packs[0]) state.stkPack = String(state.stk.packs[0].id); } } catch(e){}
+  state.stkLoading = false; if (state.stk) { document.querySelectorAll('.emo').forEach(b => { b.innerHTML = emoInner(b.dataset.emo); }); }
+}
+function stkHtml(ref, size){
+  const [pid, num] = String(ref).split('/'); const pk = state.stk && state.stk.packs.find(x => String(x.id) === pid);
+  if (!pk) { stkLoad(); return `<span class="stkph" data-stkref="${esc(ref)}" data-size="${size}"></span>`; }
+  const i = pk.nums.indexOf(+num); if (i < 0) return '';
+  const k = size / pk.cell, col = i % pk.cols, row = Math.floor(i / pk.cols);
+  return `<span class="stkimg" data-sheet="${esc(pk.sheet)}" style="width:${size}px;height:${size}px;background-size:${pk.cols*size}px auto;background-position:-${col*size}px -${row*size}px"></span>`;
+}
+async function loadStkImgs(){
+  if (!state.stk && document.querySelector('.stkph,.stkimg,.stkcov')) stkLoad();
+  for (const el of document.querySelectorAll('.stkimg[data-sheet]:not([data-ok]),.stkcov[data-sheet]:not([data-ok])')) {
+    const p = el.dataset.sheet;
+    if (!outCache[p]) { try { const r = await api(p, { headers:{ 'Accept':'application/vnd.github.raw+json' } }); if (r.ok) outCache[p] = URL.createObjectURL(await r.blob()); } catch(e){} }
+    if (outCache[p]) { el.style.backgroundImage = `url(${outCache[p]})`; el.dataset.ok = '1'; }
+  }
+  document.querySelectorAll('.stkph[data-stkref]').forEach(el => { if (state.stk) { const h = stkHtml(el.dataset.stkref, +el.dataset.size); if (h) el.outerHTML = h; } });
+}
+setInterval(loadStkImgs, 700);
+function stkPicker(id){
+  if (!state.stk) { stkLoad(); return '<span class="st">스티커 불러오는 중…</span>'; }
+  const packs = state.stk.packs; const cur = packs.find(x => String(x.id) === String(state.stkPack)) || packs[0];
+  const cov = `<div class="ecats stkpacks">${packs.map(pk => `<button class="stkpk ${pk.id===cur.id?'on':''}" data-act="stkpack" data-id="${esc(id)}" data-pack="${pk.id}" aria-label="스티커 묶음"><span class="stkcov" data-sheet="${esc(pk.cover)}" style="background-size:contain;background-repeat:no-repeat"></span></button>`).join('')}</div>`;
+  const grid = cur.nums.map((n, i) => `<button class="stkbtn" data-act="stk" data-id="${esc(id)}" data-ref="${cur.id}/${n}" aria-label="스티커">${stkHtml(cur.id+'/'+n, 76)}</button>`).join('');
+  return `${cov}<div class="egrid stkgrid">${grid}</div>`;
+}
 function emoPicker(id){
   return `<div class="emo" data-emo="${esc(id)}">${emoInner(id)}</div>`;
 }
 function emoInner(id){
-  let cat = (state.emoCat==='★' || EMO[state.emoCat]) ? state.emoCat : EMO_CATS[0];
+  let cat = (state.emoCat==='★' || state.emoCat==='🧸' || EMO[state.emoCat]) ? state.emoCat : EMO_CATS[0];
+  if (cat==='🧸') return `<div class="ecats">${['🧸',...EMO_CATS].map(k=>`<button class="ecat ${k===cat?'on':''}" data-act="emocat" data-id="${esc(id)}" data-cat="${esc(k)}">${k==='🧸'?'🧸 스티커':esc(k)}</button>`).join('')}</div>${stkPicker(id)}`;
   if (cat==='★' && !state.emoCat && recentEmos().length < 6) cat = EMO_CATS[1];
   const items = cat==='★' ? recentEmos() : EMO[cat];
-  return `<div class="ehint">종류는 옆으로 넘겨요 →</div><div class="ecats">${EMO_CATS.map(k=>`<button class="ecat ${k===cat?'on':''} ${k==='★'?'star':''}" data-act="emocat" data-id="${esc(id)}" data-cat="${esc(k)}">${esc(k)}</button>`).join('')}</div>
+  return `<div class="ehint">종류는 옆으로 넘겨요 →</div><div class="ecats">${['🧸',...EMO_CATS].map(k=>`<button class="ecat ${k===cat?'on':''} ${k==='★'?'star':''}" data-act="emocat" data-id="${esc(id)}" data-cat="${esc(k)}">${esc(k)}</button>`).join('')}</div>
   <div class="egrid">${items.length?items.map(e=>`<button class="ei" data-act="emo" data-id="${esc(id)}" data-e="${esc(e)}">${esc(e)}</button>`).join(''):'<span class="st">아직 쓴 특수 임티가 없어요</span>'}</div>`;
 }
 // ---------- inline edit + autosave ----------
@@ -1293,6 +1336,8 @@ document.addEventListener('click', e => {
   if (act==='unskip'){ const n = t.dataset.name; setSkip(n, false).then(ok => ok && toast(`${n} 카톡을 다시 가져와요 (다음 회차부터)`)); return; }
   if (act==='notif'){ Notification.requestPermission().then(p => { toast(p==='granted'?'알림 켰어요 🔔':'알림이 꺼져 있어요'); render(); }); return; }
   if (act==='emocat'){ state.emoCat = t.dataset.cat; ls.set('cci_emocat', state.emoCat); const box=document.querySelector(`[data-emo="${CSS.escape(id)}"]`); if (box) box.innerHTML = emoInner(id); return; }
+  if (act==='stkpack'){ state.stkPack = t.dataset.pack; ls.set('cci_stkpack', state.stkPack); const b=t.closest('.emo'); if (b) b.innerHTML = emoInner(id); return; }
+  if (act==='stk'){ const ref = '🧸이모티콘:' + t.dataset.ref; const c0 = state.chats.find(x => x.id===id); if (!c0) return; const cur = bubblesOf(id).length ? readLines(id) : (c0.draftMessages||[]); const keep = [...cur, ref]; c0.draftMessages = keep; mutate(id, x => { x.draftMessages = keep; }, `스티커 넣기: ${c0.name}`); toast('스티커 넣었어요 🧸'); return; }
   if (act==='emo'){ const e2 = t.dataset.e; if (e2) { insertEmo(id, e2); noteEmo(e2); } return; }
   if (act==='emotoggle'){ state.emoOpen[id] = !state.emoOpen[id]; flushSave(id); const card=t.closest('.card'); const box=card && card.querySelector('.emo'); if (box) box.remove(); else t.closest('.minirow').insertAdjacentHTML('afterend', emoPicker(id)); t.textContent = state.emoOpen[id]?'♡ 임티 닫기':'♡ 임티'; t.classList.toggle('on', !!state.emoOpen[id]); return; }
   if (act==='evdel'){ if (t.dataset.sure) { t.disabled = true; t.textContent = '지우는 중…'; delEvent(t.dataset.ev); } else { t.dataset.sure = '1'; t.textContent = '정말 삭제?'; t.classList.add('sure'); setTimeout(() => { if (t.isConnected) { delete t.dataset.sure; t.textContent = '삭제'; t.classList.remove('sure'); } }, 4000); } return; }
