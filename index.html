@@ -88,6 +88,8 @@ details{margin-top:10px} summary{cursor:pointer;color:var(--sub);font-size:14px}
 .mimg.tp{background:transparent;border-radius:0}
 .mimg.hdv{width:auto;height:auto;max-width:min(240px,70vw);max-height:320px;min-width:120px;min-height:120px;object-fit:cover;border-radius:12px}
 .mimg.hdv[src]{min-width:0;min-height:0}
+.mgrid{display:grid;gap:3px;width:min(240px,70vw);border-radius:12px;overflow:hidden}.mgrid.g2,.mgrid.g4{grid-template-columns:1fr 1fr}.mgrid.g3{grid-template-columns:1fr 1fr 1fr}
+.mimg.mg{width:100%;height:auto;aspect-ratio:1;object-fit:cover;border-radius:0;max-width:none}
 .lbox{position:fixed;inset:0;z-index:99;background:rgba(20,10,16,.94);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;touch-action:pinch-zoom}
 .lscroll{width:100%;max-width:640px;max-height:80vh;overflow-y:auto;display:flex;flex-direction:column;gap:10px;align-items:center;-webkit-overflow-scrolling:touch}
 .lbox img{width:100%;height:auto;object-fit:contain;border-radius:8px;-webkit-touch-callout:default;user-select:auto}
@@ -923,7 +925,7 @@ function render(){
   <div class="bar"><button class="link" data-act="logout">토큰 다시 넣기</button></div></main>`;
   const ton = document.querySelector('.tab.on'); if (ton && ton.parentElement) { const bar = ton.parentElement; const x = ton.offsetLeft - (bar.clientWidth - ton.offsetWidth)/2; if (x > 0 || bar.scrollLeft) bar.scrollLeft = Math.max(0, x); }
 }
-const APP_VER = '20261018-1';
+const APP_VER = '20261018-2';
 // 새 버전이 올라오면 새로고침 없이 자동으로 바뀜 (캐시를 피해서 새 주소로 다시 열기, 고치는 중이면 끝날 때까지 기다림)
 async function checkVer(){ try { const r = await fetch('version.txt?'+Date.now(), {cache:'no-store'}); if (r.ok) { const v = (await r.text()).trim(); if (v && v !== APP_VER && !(typeof editingNow==='function' && editingNow())) { const u = new URL(location.href); u.searchParams.set('v', v); location.replace(u.toString()); } } } catch(e){} }
 setInterval(checkVer, 15000); document.addEventListener('visibilitychange', () => { if (!document.hidden) checkVer(); }); setTimeout(checkVer, 3000);
@@ -1087,6 +1089,10 @@ function card(c){
     const chips = links.map(u => { let d=''; try { d = new URL(u).hostname.replace(/^www\./,''); } catch(e){} return `<a class="lchip" href="${esc(u)}" target="_blank" rel="noopener noreferrer">🔗 ${esc(d||'링크')} 열기</a>`; }).join('');
     const who = '';
     const tm = bare || !m.time ? '' : `<time>${esc(splitT(m.time)[1])}</time>`;
+    if (m.img && (m.imgHd||[]).length >= 2 && /^사진 \d+장$/.test((m.text||'').trim())) {
+      const hds = m.imgHd.slice(0, 9); hds.forEach(q => { if (!state.mediaUrl[q]) setTimeout(() => loadMedia(q), 0); });
+      return `<div class="mline ${m.sender==='me'?'ml-me':'ml-them'}"><div class="b ${m.sender==='me'?'me':'them'} media"><div class="mgrid g${Math.min(hds.length,4)}">${hds.map(q => `<img onclick="" class="mimg mg" data-mimg="${esc(q)}" data-hd="${esc(m.imgHd.join('|'))}" ${state.mediaUrl[q]?`src="${state.mediaUrl[q]}"`:''} alt="사진">`).join('')}</div></div>${tm}</div>`;
+    }
     if (m.img) {
       const one = (m.imgHd||[]).length === 1 && /^사진$/.test((m.text||'').trim()) ? m.imgHd[0] : null;
       const src0 = one && state.mediaUrl[one] ? one : m.img;
