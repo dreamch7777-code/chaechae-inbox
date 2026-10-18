@@ -925,7 +925,7 @@ function render(){
   <div class="bar"><button class="link" data-act="logout">토큰 다시 넣기</button></div></main>`;
   const ton = document.querySelector('.tab.on'); if (ton && ton.parentElement) { const bar = ton.parentElement; const x = ton.offsetLeft - (bar.clientWidth - ton.offsetWidth)/2; if (x > 0 || bar.scrollLeft) bar.scrollLeft = Math.max(0, x); }
 }
-const APP_VER = '20261018-2';
+const APP_VER = '20261018-3';
 // 새 버전이 올라오면 새로고침 없이 자동으로 바뀜 (캐시를 피해서 새 주소로 다시 열기, 고치는 중이면 끝날 때까지 기다림)
 async function checkVer(){ try { const r = await fetch('version.txt?'+Date.now(), {cache:'no-store'}); if (r.ok) { const v = (await r.text()).trim(); if (v && v !== APP_VER && !(typeof editingNow==='function' && editingNow())) { const u = new URL(location.href); u.searchParams.set('v', v); location.replace(u.toString()); } } } catch(e){} }
 setInterval(checkVer, 15000); document.addEventListener('visibilitychange', () => { if (!document.hidden) checkVer(); }); setTimeout(checkVer, 3000);
@@ -1089,6 +1089,8 @@ function card(c){
     const chips = links.map(u => { let d=''; try { d = new URL(u).hostname.replace(/^www\./,''); } catch(e){} return `<a class="lchip" href="${esc(u)}" target="_blank" rel="noopener noreferrer">🔗 ${esc(d||'링크')} 열기</a>`; }).join('');
     const who = '';
     const tm = bare || !m.time ? '' : `<time>${esc(splitT(m.time)[1])}</time>`;
+    const stkM = String(m.text||'').trim().match(/^🧸이모티콘:(\d+\/\d+)$/);
+    if (stkM && !m.img) return `<div class="mline ${m.sender==='me'?'ml-me':'ml-them'}"><div class="b ${m.sender==='me'?'me':'them'} media">${stkHtml(stkM[1], 112)}</div>${tm}</div>`;
     if (m.img && (m.imgHd||[]).length >= 2 && /^사진 \d+장$/.test((m.text||'').trim())) {
       const hds = m.imgHd.slice(0, 9); hds.forEach(q => { if (!state.mediaUrl[q]) setTimeout(() => loadMedia(q), 0); });
       return `<div class="mline ${m.sender==='me'?'ml-me':'ml-them'}"><div class="b ${m.sender==='me'?'me':'them'} media"><div class="mgrid g${Math.min(hds.length,4)}">${hds.map(q => `<img onclick="" class="mimg mg" data-mimg="${esc(q)}" data-hd="${esc(m.imgHd.join('|'))}" ${state.mediaUrl[q]?`src="${state.mediaUrl[q]}"`:''} alt="사진">`).join('')}</div></div>${tm}</div>`;
