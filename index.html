@@ -478,7 +478,7 @@ const $ = s => document.querySelector(s);
 const ls = { get(k){ try{return localStorage.getItem(k)}catch(e){return null} }, set(k,v){ try{localStorage.setItem(k,v)}catch(e){} }, del(k){ try{localStorage.removeItem(k)}catch(e){} } };
 let token = ls.get('cci_token') || '';
 let repo = ls.get('cci_repo') || DEFAULT_REPO;
-let state = { chats: [], sha: null, etag: null, sent: {}, sentEtag: null, avatars: {}, tab: ls.get('cci_tab') || 'reply', editing: {}, live: 'off', lastOk: 0 };
+let state = { chats: [], sha: null, etag: null, sent: {}, sentEtag: null, avatars: {}, tab: ls.get('cci_tab2') || 'all', editing: {}, live: 'off', lastOk: 0 };
 
 // ---------- helpers ----------
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -869,11 +869,11 @@ function bucket(c){
 }
 
 // ---------- render ----------
-const TABS = [['reply','전체'],['star','⭐'],['check','확인 필요'],['inquiry','예약·문의'],['sent','발송'],['cal','📅 달력']];
+const TABS = [['all','전체'],['reply','답장 대기'],['star','⭐'],['check','확인 필요'],['inquiry','예약·문의'],['sent','발송'],['cal','📅 달력']];
 state.q = ''; state.sel = ls.get('cci_sel') || null;
 function groupsNow(){
-  const groups = { reply:[], star:[], check:[], inquiry:[], sent:[] };
-  for (const c of state.chats){ const b = bucket(c); if (b) { groups[b].push(c); if ((state.favs||[]).includes(c.name)) groups.star.push(c); } }
+  const groups = { all:[], reply:[], star:[], check:[], inquiry:[], sent:[] };
+  for (const c of state.chats){ if (c.category!=='ad' && c.category!=='plus') groups.all.push(c); const b = bucket(c); if (b) { groups[b].push(c); if ((state.favs||[]).includes(c.name)) groups.star.push(c); } }
   const byTime = (a,b) => String(b.sortKey||b.updatedAt||'').localeCompare(String(a.sortKey||a.updatedAt||''));
   Object.values(groups).forEach(g => g.sort(byTime));
   return groups;
@@ -881,6 +881,7 @@ function groupsNow(){
 function stLabel(c){
   const s = sendState(c);
   if (c.status==='approved') return s==='sent'?'보냄':s==='failed'?'못 보냄':'발송 중';
+  if (c.status==='deleted') return '읽기만';
   if (c.status==='skipped') return '내가 답함';
   if (bucket(c)==='check') return '확인 필요';
   if (bucket(c)==='inquiry') return (c.draftMessages||[]).length ? '답장 대기' : '업체 답 대기';
@@ -919,7 +920,7 @@ function render(){
   <header><div class="top"><h1><svg class="hface" viewBox="0 0 48 48" aria-hidden="true"><path d="M24 5C12.4 5 4 12.3 4 21.5c0 5.6 3.2 10.5 8.1 13.5L10.5 43l9-5.3c1.4.2 2.9.3 4.5.3 11.6 0 20-7.3 20-16.5S35.6 5 24 5z" fill="#ffd3df"/><ellipse cx="16.5" cy="20.5" rx="2.6" ry="3.2" fill="#5a3444"/><ellipse cx="31.5" cy="20.5" rx="2.6" ry="3.2" fill="#5a3444"/><circle cx="17.4" cy="19.4" r=".9" fill="#fff"/><circle cx="32.4" cy="19.4" r=".9" fill="#fff"/><ellipse cx="12" cy="26.5" rx="3.4" ry="2.1" fill="#ff9fb8" opacity=".75"/><ellipse cx="36" cy="26.5" rx="3.4" ry="2.1" fill="#ff9fb8" opacity=".75"/><path d="M20.5 26.5q3.5 3.4 7 0" stroke="#5a3444" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M36.5 7.5l1.2 2.6 2.8.4-2 2 .5 2.8-2.5-1.3-2.5 1.3.5-2.8-2-2 2.8-.4z" fill="#fff4b0"/></svg>답장함</h1><div class="live"><span class="dot ${state.live==='on'?'on':state.live==='err'?'err':''}"></span>${state.live==='on'?'실시간':state.live==='err'?'연결 확인 중':'연결 중'}</div></div>
   <div class="tabs">${TABS.map(([k,l]) => `<button class="tab ${state.tab===k?'on':''}" data-tab="${k}">${l}<b>${k==='cal' ? (state.events||[]).length : groups[k].length}</b></button>`).join('')}</div></header>
   <main>
-  <div class="subbar">${notifBtn()}${state.tab==='reply' && state.skip.filter(n=>n!=='채채BJ').length ? `<button class="link" data-act="skiplist">🚫 안 가져오는 사람 ${state.skip.filter(n=>n!=='채채BJ').length}명</button>`:''}${state.tab==='sent' && list.length ? `<button class="link" data-act="purge">발송 모두 정리</button>`:''}</div>${state.tab==='reply' && state.skipOpen ? `<div class="skiplist">${state.skip.filter(n=>n!=='채채BJ').map(n=>`<div class="skrow"><span>${esc(n)}</span><button class="mini" data-act="unskip" data-name="${esc(n)}">다시 가져오기</button></div>`).join('') || '<div class="ghint">없어요</div>'}</div>`:''}
+  <div class="subbar">${notifBtn()}${(state.tab==='reply'||state.tab==='all') && state.skip.filter(n=>n!=='채채BJ').length ? `<button class="link" data-act="skiplist">🚫 안 가져오는 사람 ${state.skip.filter(n=>n!=='채채BJ').length}명</button>`:''}${state.tab==='sent' && list.length ? `<button class="link" data-act="purge">발송 모두 정리</button>`:''}</div>${(state.tab==='reply'||state.tab==='all') && state.skipOpen ? `<div class="skiplist">${state.skip.filter(n=>n!=='채채BJ').map(n=>`<div class="skrow"><span>${esc(n)}</span><button class="mini" data-act="unskip" data-name="${esc(n)}">다시 가져오기</button></div>`).join('') || '<div class="ghint">없어요</div>'}</div>`:''}
   ${state.tab==='cal' ? calHtml() : `<div class="pickbox"><input id="q" class="search" type="search" placeholder="이름 검색" value="${esc(keepQ)}" autocomplete="off"><div class="grid" id="grid">${gridHtml(list)}</div></div>
   ${sel ? card(sel) : ''}`}
   <div class="bar"><button class="link" data-act="logout">토큰 다시 넣기</button></div></main>`;
@@ -1351,7 +1352,7 @@ document.addEventListener('click', e => {
   const pk = e.target.closest('[data-pick]');
   if (pk){ const prev = state.sel; if (prev) flushSave(prev); state.sel = pk.dataset.pick; ls.set('cci_sel', state.sel); render(); const cd=document.querySelector('.card'); if (cd) cd.scrollIntoView({behavior:'smooth',block:'start'}); return; }
   const t = e.target.closest('[data-tab],[data-act]'); if (!t) return;
-  if (t.dataset.tab){ state.q=''; state.sel=null; state.tab = t.dataset.tab; ls.set('cci_tab', state.tab); render(); window.scrollTo(0,0); if (state.tab==='cal') loadEvents().then(render); return; }
+  if (t.dataset.tab){ state.q=''; state.sel=null; state.tab = t.dataset.tab; ls.set('cci_tab2', state.tab); render(); window.scrollTo(0,0); if (state.tab==='cal') loadEvents().then(render); return; }
   const id = t.dataset.id, act = t.dataset.act, c = state.chats.find(x => x.id === id);
   if (act==='skiplist'){ state.skipOpen = !state.skipOpen; render(); return; }
   if (act==='unskip'){ const n = t.dataset.name; setSkip(n, false).then(ok => ok && toast(`${n} 카톡을 다시 가져와요 (다음 회차부터)`)); return; }
