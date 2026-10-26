@@ -500,7 +500,7 @@ const IC = (() => {
 })();
 const isMediaLine = l => /^(📷사진|🎬동영상|🧸이모티콘):/.test(String(l||''));
 const isStk = l => /^🧸이모티콘:/.test(String(l||''));
-const hasBlank = arr => (arr||[]).some(t => !isMediaLine(t) && /\[[^\]]*\]/.test(t));
+const hasBlank = arr => (arr||[]).some(t => !isMediaLine(t) && /\[\s*\]/.test(t));
 const rid = () => Math.random().toString(36).slice(2,10) + Date.now().toString(36);
 function toast(t){ const el=$('#toast'); el.textContent=t; el.classList.add('on'); clearTimeout(toast._t); toast._t=setTimeout(()=>el.classList.remove('on'),2200); }
 const api = (path, opt={}) => fetch(`https://api.github.com/repos/${repo}/contents/${path}`, { cache:'no-store', ...opt, headers:{ 'Authorization':`Bearer ${token}`, 'Accept':'application/vnd.github+json', 'X-GitHub-Api-Version':'2022-11-28', ...(opt.headers||{}) } });
