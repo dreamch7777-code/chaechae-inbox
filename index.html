@@ -834,11 +834,11 @@ let writing = Promise.resolve();
 function mutate(id, fn, msg){
   // optimistic local update
   const c = state.chats.find(x => x.id === id); if (c) fn(c); render();
-  writing = writing.then(() => commit(id, fn, msg)).catch(e => { toast('저장 실패: 다시 눌러주세요'); console.error(e); loadChats(true).then(render); });
+  writing = writing.then(() => commit(id, fn, msg)).catch(e => { console.error(e); loadChats(true).then(render); });
   return writing;
 }
 async function commit(id, fn, msg){
-  for (let i=0;i<5;i++){
+  for (let i=0;i<10;i++){
     await loadChats(true);
     const c = state.chats.find(x => x.id === id); if (!c) return;
     fn(c); c.updatedAt = new Date().toISOString();
@@ -846,7 +846,7 @@ async function commit(id, fn, msg){
     const r = await api('chats.json', { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ message: msg, content: b64enc(body), sha: state.sha }) });
     if (r.ok){ const j = await r.json(); state.sha = j.content.sha; state.etag = null; render(); return; }
     if (r.status !== 409 && r.status !== 422) throw new Error('put '+r.status);
-    await new Promise(res => setTimeout(res, 300 + i*300));
+    await new Promise(res => setTimeout(res, 400 + i*500 + Math.random()*400));
   }
   throw new Error('conflict');
 }
@@ -1202,11 +1202,15 @@ function stkHtml(ref, size){
   const k = size / pk.cell, col = i % pk.cols, row = Math.floor(i / pk.cols);
   return `<span class="stkimg" data-sheet="${esc(pk.sheet)}" style="width:${size}px;height:${size}px;background-size:${pk.cols*size}px auto;background-position:-${col*size}px -${row*size}px"></span>`;
 }
+const stkFail = {}; let stkBusy = false;
 async function loadStkImgs(){
+  if (stkBusy) return; stkBusy = true; try { await loadStkImgs0(); } finally { stkBusy = false; }
+}
+async function loadStkImgs0(){
   if (!state.stk && document.querySelector('.stkph,.stkimg,.stkcov')) stkLoad();
   for (const el of document.querySelectorAll('.stkimg[data-sheet]:not([data-ok]),.stkcov[data-sheet]:not([data-ok])')) {
     const p = el.dataset.sheet;
-    if (!outCache[p]) { try { const r = await api(p, { headers:{ 'Accept':'application/vnd.github.raw+json' } }); if (r.ok) outCache[p] = URL.createObjectURL(await r.blob()); } catch(e){} }
+    if (!outCache[p] && !(stkFail[p] > Date.now())) { try { const r = await api(p, { headers:{ 'Accept':'application/vnd.github.raw+json' } }); if (r.ok) outCache[p] = URL.createObjectURL(await r.blob()); else stkFail[p] = Date.now() + 20000; } catch(e){ stkFail[p] = Date.now() + 20000; } }
     if (outCache[p]) { el.style.backgroundImage = `url(${outCache[p]})`; el.dataset.ok = '1'; }
   }
   document.querySelectorAll('.stkph[data-stkref]').forEach(el => { if (state.stk) { const h = stkHtml(el.dataset.stkref, +el.dataset.size); if (h) el.outerHTML = h; } });
