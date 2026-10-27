@@ -546,6 +546,8 @@ async function loadChats(force){
   state.etag = r.headers.get('ETag'); state.sha = j.sha;
   const data = JSON.parse(b64dec(j.content));
   state.chats = data.chats || [];
+  try { const t = JSON.stringify(state.chats); if (t.length < 2500000) ls.set('cci_cache', t); } catch(e){}
+  state.loading = false;
   return true;
 }
 async function loadSent(){
@@ -901,7 +903,7 @@ function nameMatch(name, q){
 function gridHtml(list){
   const q = state.q.trim().toLowerCase();
   const shown = q ? list.filter(c => nameMatch(c.name, q)) : list;
-  if (!shown.length) return `<div class="empty" style="padding:24px 0">${q?'검색 결과가 없어요':'비어 있어요 ✨'}</div>`;
+  if (!shown.length) return `<div class="empty" style="padding:24px 0">${q?'검색 결과가 없어요':(state.loading?'불러오는 중이에요…':'비어 있어요 ✨')}</div>`;
   const tone = l => /답장 대기/.test(l) ? 'wait' : /확인/.test(l) ? 'chk' : /보냄/.test(l) ? 'ok' : /못/.test(l) ? 'bad' : /발송 중/.test(l) ? 'go' : 'dim';
   return shown.map(c => { const l = stLabel(c); return `<button class="pick ${c.id===state.sel?'on':''}" data-pick="${esc(c.id)}"><img class="pav" src="${esc(avatarSrc(c))}" alt="" loading="lazy" onerror="this.onerror=null;this.src=DEFAULT_AV"><span class="pt"><span class="pn">${esc(c.name)}</span><span class="ps ${tone(l)}">${esc(l)}</span></span></button>`; }).join('');
 }
@@ -1327,12 +1329,6 @@ function updateBadge(groups){
   const n = pendingCount(groups);
   try { if ('setAppBadge' in navigator){ n ? navigator.setAppBadge(n).catch(()=>{}) : navigator.clearAppBadge().catch(()=>{}); } } catch(e){}
   const ids = new Set(state.chats.filter(c => c.status==='draft' && (c.draftMessages||[]).length).map(c => c.id + '|' + (c.updatedAt||'')));
-  if (seenDrafts){
-    const fresh = state.chats.filter(c => c.status==='draft' && (c.draftMessages||[]).length && !seenDrafts.has(c.id + '|' + (c.updatedAt||'')) && !state.saveInfo[c.id]);
-    if (fresh.length && typeof Notification!=='undefined' && Notification.permission==='granted' && navigator.serviceWorker){
-      navigator.serviceWorker.ready.then(r => r.showNotification('카톡 답장함', { body: `새 답장 초안 ${fresh.length}개 · ${fresh.slice(0,3).map(c=>c.name).join(', ')}`, icon:'icon-192.png', badge:'icon-192.png', tag:'cci-new' })).catch(()=>{});
-    }
-  }
   seenDrafts = ids;
 }
 function notifBtn(){
@@ -1491,6 +1487,7 @@ async function tick(){
 }
 document.addEventListener('visibilitychange', () => { if (!document.hidden && token){ clearTimeout(timer); tick(); } });
 async function start(){
+  try { const c = JSON.parse(ls.get('cci_cache') || 'null'); if (Array.isArray(c) && c.length) state.chats = c; else state.loading = true; } catch(e){ state.loading = true; }
   render();
   try { await loadChats(true); await loadSent(); state.live='on'; } catch(e){ if (e.message==='auth'){ toast('토큰이 맞지 않아요'); ls.del('cci_token'); token=''; } else state.live='err'; }
   render(); loadAvatars().then(render); loadEvents().then(render); loadFavs().then(render); loadSkip().then(render);
