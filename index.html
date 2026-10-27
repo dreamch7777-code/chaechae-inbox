@@ -928,7 +928,7 @@ function render(){
   <div class="bar"><button class="link" data-act="logout">토큰 다시 넣기</button></div></main>`;
   const ton = document.querySelector('.tab.on'); if (ton && ton.parentElement) { const bar = ton.parentElement; const x = ton.offsetLeft - (bar.clientWidth - ton.offsetWidth)/2; if (x > 0 || bar.scrollLeft) bar.scrollLeft = Math.max(0, x); }
 }
-const APP_VER = (() => { try { return new URL(location.href).searchParams.get('v') || '20261027-6'; } catch(e){ return '20261027-6'; } })();
+const APP_VER = (() => { try { return new URL(location.href).searchParams.get('v') || '20261027-7'; } catch(e){ return '20261027-7'; } })();
 // 새 버전이 올라오면 새로고침 없이 자동으로 바뀜 (캐시를 피해서 새 주소로 다시 열기, 고치는 중이면 끝날 때까지 기다림)
 async function checkVer(){ try { const r = await fetch('version.txt?'+Date.now(), {cache:'no-store'}); if (r.ok) { const v = (await r.text()).trim(); if (v && v !== APP_VER && !(typeof editingNow==='function' && editingNow())) { const u = new URL(location.href); u.searchParams.set('v', v); location.replace(u.toString()); } } } catch(e){} }
 setInterval(checkVer, 15000); document.addEventListener('visibilitychange', () => { if (!document.hidden) checkVer(); }); setTimeout(checkVer, 3000);
@@ -954,9 +954,13 @@ const TONE = (() => {
   const norm = c => c.replace(/(요|용)(오|옹|요)+$/, '$1').replace(/니닷$/, '니다').replace(/(넵|네)+$/, m => m);
   const toPlain = core => { // → 반말
     core = norm(core);
+    const vm0 = core.match(/^(.*\S)\s+(오빠야?|언니야?|웅니|쌤|공쥬|공주)$/);   // "많이 드세요 언니" → "많이 먹어 언니"
+    if (vm0) return toPlain(vm0[1]) + ' ' + vm0[2];
     const rules = [
+      [/(드세요|드셔요|드세용)$/, '먹어'], [/(주무세요|주무셔요)$/, '자'], [/(계세요|계셔요)$/, '있어'], [/(말씀하세요|말씀해주세요)$/, '말해'], [/쉬세요$/, '쉬어'],
+      [/(가세요|가셔요)$/, '가'], [/(오세요|오셔요)$/, '와'], [/(보세요|보셔요)$/, '봐'], [/(하세요|하셔요)$/, '해'],
       [/(감사합니다|감사해요|감사해용|감사드려요)$/, '고마워'], [/(죄송합니다|죄송해요|죄송해용)$/, '미안해'],
-      [/주세요$/, '줘'], [/하세요$/, '해'], [/(으)?세요$/, ''], [/주세용$/, '줘'], [/합니다$/, '해'], [/했습니다$/, '했어'], [/습니다$/, '어'],
+      [/주세요$/, '줘'], [/하세요$/, '해'], [/([가-힣])으세요$/, (m, p) => p + (/[아안알앙앉잡좁놓옴옥]/.test(p) ? '아' : '어')], [/([가-힣])세요$/, '$1어'], [/주세용$/, '줘'], [/합니다$/, '해'], [/했습니다$/, '했어'], [/습니다$/, '어'],
       [/(이에요|예요|이에용|예용)$/, '야'], [/(죠|죵)$/, '지'], [/(네요|네용)$/, '네'],
       [/(할게요|할게용|할께요)$/, '할게'], [/(게요|게용)$/, '게'], [/(까요|까용)$/, '까'],
       [/(요|용|욥|욤)$/, ''], [/^넵+\s*!*$/, '웅'], [/^네넵$/, '웅웅'], [/^네$/, '웅'],
@@ -973,6 +977,7 @@ const TONE = (() => {
     if (/(^|\s)웅+$/.test(core)) return core.replace(/웅웅$/, '네네').replace(/웅$/, '네');
     if (/(요|다|죠|까요|니다|용|세요)$/.test(core)) return core;
     const rules = [
+      [/([가-힣]다)아+$/, '$1'],
       [/(고마워어+|고마워|고마오|고마웡|땡큐 땡큐|땡큐)$/, '고마워요'], [/(미아내애*|미안해애*|미안)$/, '미안해요'],
       [/(이써어*|있어어*)$/, '있어요'], [/(없어어*)$/, '없어요'], [/(했어어*|해써|해쪄|해쪼)$/, '했어요'],
       [/(봤어|봐써)$/, '봤어요'], [/(조오*|줘어*|죠오+)$/, '주세요'], [/(할게에*|할께|할겡)$/, '할게요'],
