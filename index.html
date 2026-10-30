@@ -78,6 +78,7 @@ details{margin-top:10px} summary{cursor:pointer;color:var(--sub);font-size:14px}
 .dedit:focus{box-shadow:0 0 0 2px var(--accent) inset}
 .dedit:empty:before{content:'여기에 입력';color:#8a8174}
 .saveinfo{font-size:12px;color:var(--sub);text-align:right;margin-top:4px}
+.lprev{display:block;margin-top:8px}.lprev img{display:block;width:100%;max-width:240px;border-radius:10px}.audb{min-width:210px}.audt{font-size:13px;font-weight:700;margin-bottom:6px;word-break:break-all}.audb audio{width:100%;max-width:260px;height:36px}.auddl{display:inline-block;margin-top:6px;font-size:13px;font-weight:700;color:#2563eb;text-decoration:none}
 .lchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
 .lchip{display:inline-block;background:#fff;border:1px solid var(--line);color:#2563eb;border-radius:12px;padding:9px 12px;font-size:14px;font-weight:700;text-decoration:none}
 .callb{display:flex!important;align-items:center;gap:10px;padding:9px 14px!important}.callic{width:34px;height:34px;border-radius:50%;background:#fff;color:#4a9d6f;display:flex;align-items:center;justify-content:center;flex:none}.callic.miss{color:#e5484d}.calltx{display:flex;flex-direction:column;line-height:1.25}.calltx b{font-size:15px}.calltx small{font-size:12px;opacity:.7}
@@ -929,7 +930,7 @@ function render(){
   <div class="bar"><button class="link" data-act="logout">토큰 다시 넣기</button></div></main>`;
   const ton = document.querySelector('.tab.on'); if (ton && ton.parentElement) { const bar = ton.parentElement; const x = ton.offsetLeft - (bar.clientWidth - ton.offsetWidth)/2; if (x > 0 || bar.scrollLeft) bar.scrollLeft = Math.max(0, x); }
 }
-const APP_VER = (() => { try { return new URL(location.href).searchParams.get('v') || '20261027-8'; } catch(e){ return '20261027-8'; } })();
+const APP_VER = (() => { try { return new URL(location.href).searchParams.get('v') || '20261031-1'; } catch(e){ return '20261031-1'; } })();
 // 새 버전이 올라오면 새로고침 없이 자동으로 바뀜 (캐시를 피해서 새 주소로 다시 열기, 고치는 중이면 끝날 때까지 기다림)
 async function checkVer(){ try { const r = await fetch('version.txt?'+Date.now(), {cache:'no-store'}); if (r.ok) { const v = (await r.text()).trim(); if (v && v !== APP_VER && !(typeof editingNow==='function' && editingNow())) { const u = new URL(location.href); u.searchParams.set('v', v); location.replace(u.toString()); } } } catch(e){} }
 setInterval(checkVer, 15000); document.addEventListener('visibilitychange', () => { if (!document.hidden) checkVer(); }); setTimeout(checkVer, 3000);
@@ -1104,6 +1105,10 @@ function card(c){
       return `<div class="mline ${m.sender==='me'?'ml-me':'ml-them'}"><div class="b ${m.sender==='me'?'me':'them'} callb"><span class="callic${miss?' miss':''}"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1l-2.3 2.2z"/></svg></span><span class="calltx"><b>${title}</b><small>${kind}</small></span></div>${tm}</div>`; }
     const stkM = String(m.text||'').trim().match(/^🧸이모티콘:(\d+\/\d+)$/);
     if (stkM && !m.img) return `<div class="mline ${m.sender==='me'?'ml-me':'ml-them'}"><div class="b ${m.sender==='me'?'me':'them'} media">${stkHtml(stkM[1], 112)}</div>${tm}</div>`;
+    if (m.audio || m.file) {
+      const p = m.audio || m.file, isA = !!m.audio; const nm = m.fileName || (String(p).split('/').pop() || '파일');
+      return `<div class="mline ${m.sender==='me'?'ml-me':'ml-them'}"><div class="b ${m.sender==='me'?'me':'them'} audb"><div class="audt">${isA?'🎵':'📎'} ${esc(nm)}</div>${isA?`<audio controls preload="none" data-aud="${esc(p)}"></audio>`:''}<a class="auddl" data-dl="${esc(p)}" data-dlname="${esc(nm)}" href="#">⬇ 내려받기</a></div>${tm}</div>`;
+    }
     if (m.img && (m.imgHd||[]).length >= 2 && /^사진 \d+장$/.test((m.text||'').trim())) {
       const hds = m.imgHd.slice(0, 9); hds.forEach(q => { if (!state.mediaUrl[q]) setTimeout(() => loadMedia(q), 0); });
       return `<div class="mline ${m.sender==='me'?'ml-me':'ml-them'}"><div class="b ${m.sender==='me'?'me':'them'} media"><div class="mgrid g${Math.min(hds.length,4)}">${hds.map(q => `<img onclick="" class="mimg mg" data-mimg="${esc(q)}" data-hd="${esc(m.imgHd.join('|'))}" ${state.mediaUrl[q]?`src="${state.mediaUrl[q]}"`:''} alt="사진">`).join('')}</div></div>${tm}</div>`;
@@ -1116,7 +1121,10 @@ function card(c){
       const w = Math.min(240, Math.round((m.imgW||200)*0.9)), h = Math.round(w * (m.imgH||200) / (m.imgW||200));
       return `<div class="mline ${m.sender==='me'?'ml-me':'ml-them'}"><div class="b ${m.sender==='me'?'me':'them'} media">${who}<img onclick="" class="mimg${/\.png$/.test(m.img)?' tp':''}${one?' hdv':''}" data-mimg="${esc(m.img)}" data-hd="${esc((m.imgHd||[]).join('|'))}" ${u?`src="${u}"`:''} ${one?'':`width="${w}" height="${h}"`} style="${one?'':`width:${w}px;height:auto;aspect-ratio:${w}/${h}`}" alt="${esc(m.text||'사진')}"></div>${tm}</div>`;
     }
-    return `<div class="mline ${m.sender==='me'?'ml-me':'ml-them'}"><div class="b ${m.sender==='me'?'me':'them'}">${who}${linkify(esc(m.text))}</div>${tm}</div>`;
+    let prev = '';
+    if (m.preview) { const lk = (m.text||'').match(/https?:\/\/[^\s<>"']+/); if (!state.mediaUrl[m.preview]) setTimeout(() => loadMedia(m.preview), 0);
+      prev = `<a class="lprev" ${lk?`href="${esc(lk[0])}" target="_blank" rel="noopener noreferrer"`:''}><img data-mimg="${esc(m.preview)}" ${state.mediaUrl[m.preview]?`src="${state.mediaUrl[m.preview]}"`:''} alt="링크 미리보기"></a>`; }
+    return `<div class="mline ${m.sender==='me'?'ml-me':'ml-them'}"><div class="b ${m.sender==='me'?'me':'them'}">${who}${linkify(esc(m.text))}${prev}</div>${tm}</div>`;
   };
   const allM = (c.messages||[]); const recent = allM.slice(-6), older = allM.slice(-20, -6);
   const seq = (arr, base) => arr.map((m, j) => {
@@ -1300,6 +1308,21 @@ async function loadOutImgs(){
     if (outCache[p]) v.src = outCache[p] + '#t=0.1';
   }
 }
+const audCache = {};
+async function fileUrl(p){
+  if (audCache[p]) return audCache[p];
+  const r = await api(p, { headers:{ 'Accept':'application/vnd.github.raw+json' } }); if (!r.ok) return null;
+  const b = await r.blob(); const ty = /\.m4a$/i.test(p) ? 'audio/mp4' : /\.mp3$/i.test(p) ? 'audio/mpeg' : /\.wav$/i.test(p) ? 'audio/wav' : /\.ogg$/i.test(p) ? 'audio/ogg' : /\.aac$/i.test(p) ? 'audio/aac' : (b.type || 'application/octet-stream');
+  return audCache[p] = URL.createObjectURL(new Blob([b], { type: ty }));
+}
+async function loadAudio(){
+  for (const a of document.querySelectorAll('audio[data-aud]:not([src])')) { const p = a.dataset.aud; try { const u = await fileUrl(p); if (u) a.src = u; } catch(e){} }
+}
+document.addEventListener('click', async e => {
+  const d = e.target.closest && e.target.closest('a[data-dl]'); if (!d) return; e.preventDefault();
+  try { const u = await fileUrl(d.dataset.dl); if (!u) { toast('파일을 아직 못 불러왔어요'); return; } const a = document.createElement('a'); a.href = u; a.download = d.dataset.dlname || 'file'; document.body.appendChild(a); a.click(); a.remove(); } catch(err){ toast('내려받기에 실패했어요'); }
+});
+setInterval(loadAudio, 1500);
 setInterval(loadOutImgs, 1500);
 function bubblesOf(id){ return [...document.querySelectorAll(`.dedit[data-ed="${CSS.escape(id)}"]`)]; }
 function readLines(id){ return bubblesOf(id).map(el => el.dataset.line ? el.dataset.line : el.innerText.replace(/ /g,' ').replace(/\n+$/,'').trim()).filter(Boolean); }
