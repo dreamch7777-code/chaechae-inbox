@@ -78,7 +78,8 @@ details{margin-top:10px} summary{cursor:pointer;color:var(--sub);font-size:14px}
 .dedit:focus{box-shadow:0 0 0 2px var(--accent) inset}
 .dedit:empty:before{content:'여기에 입력';color:#8a8174}
 .saveinfo{font-size:12px;color:var(--sub);text-align:right;margin-top:4px}
-.lprev{display:block;margin-top:8px}.lprev img{display:block;width:100%;max-width:240px;border-radius:10px}.audb{min-width:210px}.audt{font-size:13px;font-weight:700;margin-bottom:6px;word-break:break-all}.audb audio{width:100%;max-width:260px;height:36px}.auddl{display:inline-block;margin-top:6px;font-size:13px;font-weight:700;color:#2563eb;text-decoration:none}
+.lprev{display:block;margin-top:8px}.lprev img{display:block;width:100%;max-width:240px;border-radius:10px}.recvb{margin-left:auto;margin-right:8px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:6px 10px;font-size:13px;font-weight:700}.recvbox{position:fixed;inset:0;z-index:60;background:var(--bg,#fff);overflow:auto;padding:16px}.recvh{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;font-size:16px}.recvh button{border:0;background:none;font-size:20px}.recvi{background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:10px}.recvi audio{width:100%;height:36px;margin-top:6px}.recvm{font-size:12px;opacity:.65;margin-top:2px}.recve{padding:30px 6px;text-align:center;opacity:.7;line-height:1.6}
+.audb{min-width:210px}.audt{font-size:13px;font-weight:700;margin-bottom:6px;word-break:break-all}.audb audio{width:100%;max-width:260px;height:36px}.auddl{display:inline-block;margin-top:6px;font-size:13px;font-weight:700;color:#2563eb;text-decoration:none}
 .lchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
 .lchip{display:inline-block;background:#fff;border:1px solid var(--line);color:#2563eb;border-radius:12px;padding:9px 12px;font-size:14px;font-weight:700;text-decoration:none}
 .callb{display:flex!important;align-items:center;gap:10px;padding:9px 14px!important}.callic{width:34px;height:34px;border-radius:50%;background:#fff;color:#4a9d6f;display:flex;align-items:center;justify-content:center;flex:none}.callic.miss{color:#e5484d}.calltx{display:flex;flex-direction:column;line-height:1.25}.calltx b{font-size:15px}.calltx small{font-size:12px;opacity:.7}
@@ -921,7 +922,7 @@ function render(){
   const sel = list.find(c => c.id===state.sel);
   const keepQ = state.q;
   $('#app').innerHTML = `
-  <header><div class="top"><h1><svg class="hface" viewBox="0 0 48 48" aria-hidden="true"><path d="M24 5C12.4 5 4 12.3 4 21.5c0 5.6 3.2 10.5 8.1 13.5L10.5 43l9-5.3c1.4.2 2.9.3 4.5.3 11.6 0 20-7.3 20-16.5S35.6 5 24 5z" fill="#ffd3df"/><ellipse cx="16.5" cy="20.5" rx="2.6" ry="3.2" fill="#5a3444"/><ellipse cx="31.5" cy="20.5" rx="2.6" ry="3.2" fill="#5a3444"/><circle cx="17.4" cy="19.4" r=".9" fill="#fff"/><circle cx="32.4" cy="19.4" r=".9" fill="#fff"/><ellipse cx="12" cy="26.5" rx="3.4" ry="2.1" fill="#ff9fb8" opacity=".75"/><ellipse cx="36" cy="26.5" rx="3.4" ry="2.1" fill="#ff9fb8" opacity=".75"/><path d="M20.5 26.5q3.5 3.4 7 0" stroke="#5a3444" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M36.5 7.5l1.2 2.6 2.8.4-2 2 .5 2.8-2.5-1.3-2.5 1.3.5-2.8-2-2 2.8-.4z" fill="#fff4b0"/></svg>답장함</h1><div class="live"><span class="dot ${state.live==='on'?'on':state.live==='err'?'err':''}"></span>${state.live==='on'?'실시간':state.live==='err'?'연결 확인 중':'연결 중'}</div></div>
+  <header><div class="top"><h1><svg class="hface" viewBox="0 0 48 48" aria-hidden="true"><path d="M24 5C12.4 5 4 12.3 4 21.5c0 5.6 3.2 10.5 8.1 13.5L10.5 43l9-5.3c1.4.2 2.9.3 4.5.3 11.6 0 20-7.3 20-16.5S35.6 5 24 5z" fill="#ffd3df"/><ellipse cx="16.5" cy="20.5" rx="2.6" ry="3.2" fill="#5a3444"/><ellipse cx="31.5" cy="20.5" rx="2.6" ry="3.2" fill="#5a3444"/><circle cx="17.4" cy="19.4" r=".9" fill="#fff"/><circle cx="32.4" cy="19.4" r=".9" fill="#fff"/><ellipse cx="12" cy="26.5" rx="3.4" ry="2.1" fill="#ff9fb8" opacity=".75"/><ellipse cx="36" cy="26.5" rx="3.4" ry="2.1" fill="#ff9fb8" opacity=".75"/><path d="M20.5 26.5q3.5 3.4 7 0" stroke="#5a3444" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M36.5 7.5l1.2 2.6 2.8.4-2 2 .5 2.8-2.5-1.3-2.5 1.3.5-2.8-2-2 2.8-.4z" fill="#fff4b0"/></svg>답장함</h1><button class="recvb" id="recvBtn" type="button">🎵 받은 파일</button><div class="live"><span class="dot ${state.live==='on'?'on':state.live==='err'?'err':''}"></span>${state.live==='on'?'실시간':state.live==='err'?'연결 확인 중':'연결 중'}</div></div>
   <div class="tabs">${TABS.map(([k,l]) => `<button class="tab ${state.tab===k?'on':''}" data-tab="${k}">${l}<b>${k==='cal' ? (state.events||[]).length : groups[k].length}</b></button>`).join('')}</div></header>
   <main>
   <div class="subbar">${notifBtn()}${(state.tab==='reply'||state.tab==='all') && state.skip.filter(n=>n!=='채채BJ').length ? `<button class="link" data-act="skiplist">🚫 안 가져오는 사람 ${state.skip.filter(n=>n!=='채채BJ').length}명</button>`:''}${state.tab==='sent' && list.length ? `<button class="link" data-act="purge">발송 모두 정리</button>`:''}</div>${(state.tab==='reply'||state.tab==='all') && state.skipOpen ? `<div class="skiplist">${state.skip.filter(n=>n!=='채채BJ').map(n=>`<div class="skrow"><span>${esc(n)}</span><button class="mini" data-act="unskip" data-name="${esc(n)}">다시 가져오기</button></div>`).join('') || '<div class="ghint">없어요</div>'}</div>`:''}
@@ -930,7 +931,7 @@ function render(){
   <div class="bar"><button class="link" data-act="logout">토큰 다시 넣기</button></div></main>`;
   const ton = document.querySelector('.tab.on'); if (ton && ton.parentElement) { const bar = ton.parentElement; const x = ton.offsetLeft - (bar.clientWidth - ton.offsetWidth)/2; if (x > 0 || bar.scrollLeft) bar.scrollLeft = Math.max(0, x); }
 }
-const APP_VER = (() => { try { return new URL(location.href).searchParams.get('v') || '20261031-1'; } catch(e){ return '20261031-1'; } })();
+const APP_VER = (() => { try { return new URL(location.href).searchParams.get('v') || '20261031-2'; } catch(e){ return '20261031-2'; } })();
 // 새 버전이 올라오면 새로고침 없이 자동으로 바뀜 (캐시를 피해서 새 주소로 다시 열기, 고치는 중이면 끝날 때까지 기다림)
 async function checkVer(){ try { const r = await fetch('version.txt?'+Date.now(), {cache:'no-store'}); if (r.ok) { const v = (await r.text()).trim(); if (v && v !== APP_VER && !(typeof editingNow==='function' && editingNow())) { const u = new URL(location.href); u.searchParams.set('v', v); location.replace(u.toString()); } } } catch(e){} }
 setInterval(checkVer, 15000); document.addEventListener('visibilitychange', () => { if (!document.hidden) checkVer(); }); setTimeout(checkVer, 3000);
@@ -1308,6 +1309,20 @@ async function loadOutImgs(){
     if (outCache[p]) v.src = outCache[p] + '#t=0.1';
   }
 }
+
+document.addEventListener('click', async e => {
+  if (!(e.target.closest && e.target.closest('#recvBtn'))) return;
+  let box = document.getElementById('recvBox'); if (box) { box.remove(); return; }
+  box = document.createElement('div'); box.id = 'recvBox'; box.className = 'recvbox'; box.innerHTML = '<div class="recvh"><b>받은 파일·음원</b><button type="button" id="recvX">✕</button></div><div class="recvl">불러오는 중…</div>';
+  document.body.appendChild(box); box.querySelector('#recvX').onclick = () => box.remove();
+  let list = [];
+  try { const r = await api('recv.json', { headers:{ 'Accept':'application/vnd.github.raw+json' } }); if (r.ok) list = (JSON.parse(await r.text()).items || []); } catch(err){}
+  const L = box.querySelector('.recvl');
+  if (!list.length) { L.innerHTML = '<div class="recve">아직 받은 파일이 없어요.<br>PC 카톡에서 파일·음원을 받으면(카톡 받은 파일 폴더) 여기에 올라와요.</div>'; return; }
+  list.sort((a, b) => String(b.at).localeCompare(String(a.at)));
+  L.innerHTML = list.map(it => { const isA = /\.(mp3|m4a|wav|aac|ogg)$/i.test(it.path || ''); const nm = it.name || '파일';
+    return `<div class="recvi"><div class="audt">${isA ? '🎵' : '📎'} ${esc(nm)}</div><div class="recvm">${esc(it.room || '')} ${esc(String(it.at || '').slice(0, 16).replace('T', ' '))}${it.tooBig ? ' · 너무 커서 PC에만 있어요' : ''}</div>${it.tooBig ? '' : (isA ? `<audio controls preload="none" data-aud="${esc(it.path)}"></audio>` : '')}${it.tooBig ? '' : `<a class="auddl" data-dl="${esc(it.path)}" data-dlname="${esc(nm)}" href="#">⬇ 내려받기</a>`}</div>`; }).join('');
+});
 const audCache = {};
 async function fileUrl(p){
   if (audCache[p]) return audCache[p];
