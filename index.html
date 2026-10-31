@@ -402,6 +402,7 @@ details.older .msgs{margin-top:0}
 .lpage{flex:0 0 100%;scroll-snap-align:center;display:flex;align-items:center;justify-content:center;max-height:78vh}
 .lpage img{width:auto!important;max-width:100%;max-height:78vh;object-fit:contain}
 .lcount{position:fixed;top:calc(env(safe-area-inset-top,0px) + 24px);left:50%;transform:translateX(-50%);color:#fff;font-size:15px;background:rgba(255,255,255,.14);padding:5px 14px;border-radius:999px}
+.lnav{position:fixed;top:50%;transform:translateY(-50%);z-index:100;width:42px;height:56px;border:0;border-radius:12px;background:rgba(255,255,255,.18);color:#fff;font-size:30px;line-height:1;cursor:pointer}.lprev{left:8px}.lnext{right:8px}@media(max-width:600px){.lnav{opacity:.55;width:34px}}
 .ldots{display:flex;gap:6px;margin-top:12px}.ldots i{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.3)}.ldots i.on{background:#fff}
 .lsaveall{background:rgba(255,255,255,.18);color:#fff}
 .bvid video{display:block;width:100%;max-width:260px;border-radius:12px;background:#000}
@@ -931,7 +932,7 @@ function render(){
   <div class="bar"><button class="link" data-act="logout">토큰 다시 넣기</button></div></main>`;
   const ton = document.querySelector('.tab.on'); if (ton && ton.parentElement) { const bar = ton.parentElement; const x = ton.offsetLeft - (bar.clientWidth - ton.offsetWidth)/2; if (x > 0 || bar.scrollLeft) bar.scrollLeft = Math.max(0, x); }
 }
-const APP_VER = (() => { try { return new URL(location.href).searchParams.get('v') || '20261031-2'; } catch(e){ return '20261031-2'; } })();
+const APP_VER = (() => { try { return new URL(location.href).searchParams.get('v') || '20261031-3'; } catch(e){ return '20261031-3'; } })();
 // 새 버전이 올라오면 새로고침 없이 자동으로 바뀜 (캐시를 피해서 새 주소로 다시 열기, 고치는 중이면 끝날 때까지 기다림)
 async function checkVer(){ try { const r = await fetch('version.txt?'+Date.now(), {cache:'no-store'}); if (r.ok) { const v = (await r.text()).trim(); if (v && v !== APP_VER && !(typeof editingNow==='function' && editingNow())) { const u = new URL(location.href); u.searchParams.set('v', v); location.replace(u.toString()); } } } catch(e){} }
 setInterval(checkVer, 15000); document.addEventListener('visibilitychange', () => { if (!document.hidden) checkVer(); }); setTimeout(checkVer, 3000);
@@ -1027,16 +1028,19 @@ async function loadMedia(p){
   } catch(e){} finally { mediaBusy[p] = false; }
 }
 async function blobOf(p){ await loadMedia(p); const u = state.mediaUrl[p]; return u ? await (await fetch(u)).blob() : null; }
-function openViewer(p, hd){
-  const list = hd.length ? hd : [p];
+function openViewer(p, hd, all){
+  const list = (all && all.length > 1) ? all : (hd.length ? hd : [p]);
+  const startAt = Math.max(0, list.indexOf(hd.length ? hd[0] : p));
   const box = document.createElement('div'); box.className = 'lbox';
   const many = list.length > 1;
-  box.innerHTML = `<button class="lx lclose" aria-label="닫기">✕</button>${many?`<div class="lcount"><b>1</b> / ${list.length}</div>`:''}<div class="lscroll lpager">${list.map(q => `<div class="lpage"><img alt="사진" data-q="${esc(q)}"></div>`).join('')}</div>${many?`<div class="ldots">${list.map((_,i)=>`<i class="${i?'':'on'}"></i>`).join('')}</div>`:''}<div class="lbar"><button class="lsave">⬇︎ 이 사진 저장</button>${many?`<button class="lsaveall">${list.length}장 모두</button>`:''}</div><div class="lhint">${hd.length ? '원본 화질' : '작은 사진이에요 · 원본은 다음 회차에 받아와요'}${many?' · 옆으로 넘겨 보세요':''}</div>`;
+  box.innerHTML = `<button class="lx lclose" aria-label="닫기">✕</button>${many?`<div class="lcount"><b>1</b> / ${list.length}</div>`:''}<div class="lscroll lpager">${list.map(q => `<div class="lpage"><img alt="사진" data-q="${esc(q)}"></div>`).join('')}</div>${many?`<div class="ldots">${list.map((_,i)=>`<i class="${i?'':'on'}"></i>`).join('')}</div>`:''}<div class="lbar"><button class="lsave">⬇︎ 이 사진 저장</button>${many?`<button class="lsaveall">${list.length}장 모두</button>`:''}</div><div class="lhint">${hd.length ? '원본 화질' : '작은 사진이에요 · 원본은 다음 회차에 받아와요'}${many?' · 옆으로 밀어서 다음 사진':''}</div>`;
   document.body.appendChild(box); document.body.style.overflow = 'hidden';
   const pager = box.querySelector('.lpager'); const imgs = [...box.querySelectorAll('img')];
-  if (hd.length && state.mediaUrl[p]) imgs[0].src = state.mediaUrl[p];          // 원본 받는 동안 작은 사진 먼저
+  if (hd.length && state.mediaUrl[p] && imgs[startAt]) imgs[startAt].src = state.mediaUrl[p];          // 원본 받는 동안 작은 사진 먼저
   list.forEach((q, i) => loadMedia(q).then(() => { if (state.mediaUrl[q]) imgs[i].src = state.mediaUrl[q]; }));
-  let cur = 0;
+  let cur = startAt;
+  if (startAt) { box.querySelector('.lcount b') && (box.querySelector('.lcount b').textContent = startAt + 1); box.querySelectorAll('.ldots i').forEach((d, k) => d.classList.toggle('on', k === startAt)); requestAnimationFrame(() => { pager.style.scrollBehavior = 'auto'; pager.scrollLeft = startAt * pager.clientWidth; pager.style.scrollBehavior = ''; }); }
+  if (many) { const pv = document.createElement('button'), nx = document.createElement('button'); pv.className = 'lnav lprev'; nx.className = 'lnav lnext'; pv.textContent = '‹'; nx.textContent = '›'; pv.setAttribute('aria-label','이전 사진'); nx.setAttribute('aria-label','다음 사진'); pv.onclick = e => { e.stopPropagation(); go(-1); }; nx.onclick = e => { e.stopPropagation(); go(1); }; box.appendChild(pv); box.appendChild(nx); }
   const upd = () => { const i = Math.round(pager.scrollLeft / Math.max(1, pager.clientWidth)); if (i === cur) return; cur = i; const b = box.querySelector('.lcount b'); if (b) b.textContent = i + 1; box.querySelectorAll('.ldots i').forEach((d, k) => d.classList.toggle('on', k === i)); };
   pager.addEventListener('scroll', upd, { passive:true });
   const go = d => { pager.scrollTo({ left: Math.max(0, Math.min(list.length-1, cur + d)) * pager.clientWidth, behavior:'smooth' }); };
@@ -1064,7 +1068,7 @@ function openUrlViewer(u, name){
   box.addEventListener('click', e => { if (e.target === box || e.target.classList.contains('lscroll') || e.target.closest('.lclose')) close(); });
 }
 document.addEventListener('click', e => { const a = e.target.closest && e.target.closest('img.av, img.mav'); if (a && a.src && !a.src.includes('svg')) { e.preventDefault(); e.stopPropagation(); openUrlViewer(a.src, a.dataset.name); } }, true);
-document.addEventListener('click', e => { const im = e.target.closest && e.target.closest('img.mimg'); if (im) { e.preventDefault(); e.stopPropagation(); openViewer(im.dataset.mimg, (im.dataset.hd || '').split('|').filter(Boolean)); } }, true);
+document.addEventListener('click', e => { const im = e.target.closest && e.target.closest('img.mimg'); if (im) { e.preventDefault(); e.stopPropagation(); const all = []; (im.closest('.card') || document).querySelectorAll('img.mimg').forEach(x => { const h = (x.dataset.hd || '').split('|').filter(Boolean); (h.length ? h : [x.dataset.mimg]).forEach(q => { if (q && !all.includes(q)) all.push(q); }); }); openViewer(im.dataset.mimg, (im.dataset.hd || '').split('|').filter(Boolean), all); } }, true);
 function goNext(id){
   // 승인·제외하면 바로 다음 사람으로 넘어가기
   const list = (groupsNow()[state.tab]||[]).filter(c => c.id !== id);
