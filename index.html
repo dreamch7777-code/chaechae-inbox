@@ -265,7 +265,7 @@ details{margin-top:10px} summary{cursor:pointer;color:var(--sub);font-size:14px}
 .gcl{display:grid;grid-template-columns:44px minmax(0,1fr) auto auto;gap:8px;align-items:center;padding:6px 0;border-bottom:1px dashed #f3dde6}.gcl img{width:44px;height:44px;border-radius:8px;object-fit:cover;background:#faf3f6}
 .gci{display:flex;flex-direction:column;min-width:0}.gci b{font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.gci small{font-size:11px;color:#a28a96}.gci span{font-size:13px;font-weight:800;color:#d2496f}
 .gqs{display:flex;align-items:center;gap:6px}.gqs button{width:26px;height:26px;border-radius:50%;border:1px solid #f2cbd8;background:#fff;color:#5a3444}.gcx{border:0;background:none;color:#b0909e;font-size:18px}.gcd{font-style:normal;font-size:12px;grid-column:3/5}
-.gsum{text-align:right;font-size:13px;color:#8a6b7a;margin:8px 0 2px}.gsum b{color:#d2496f;font-size:15px}
+.kemo{font-size:1.45em;line-height:1;vertical-align:-.15em}.gsum{text-align:right;font-size:13px;color:#8a6b7a;margin:8px 0 2px}.gsum b{color:#d2496f;font-size:15px}
 .grec{margin-top:6px;border-top:1px solid #f3e6ec;padding-top:12px}.grtabs{display:flex;gap:6px;margin-bottom:8px}.grt{flex:1;border:0;background:#fbf5f8;color:#8a6b7a;border-radius:999px;padding:8px 0;font-weight:700;font-size:13px}.grt.on{background:#fde9f1;color:#d9658f}
 .grform{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}.gsex{display:flex;flex:2;background:#f6eef2;border-radius:12px;padding:3px;gap:3px}.gsex button{flex:1;border:0;background:none;border-radius:9px;font-size:13px;color:#9a8290}.gsex button.on{background:#fff;color:#5a3444;font-weight:700}
 .gimg{position:relative;display:block}.gheart{position:absolute;right:6px;bottom:6px;width:28px;height:28px;border-radius:50%;border:0;background:rgba(255,255,255,.9);color:#b0909e;font-size:14px}.gheart.on{color:#ef5b87}
@@ -934,13 +934,16 @@ function render(){
   <div class="bar"><button class="link" data-act="logout">토큰 다시 넣기</button></div></main>`;
   const ton = document.querySelector('.tab.on'); if (ton && ton.parentElement) { const bar = ton.parentElement; const x = ton.offsetLeft - (bar.clientWidth - ton.offsetWidth)/2; if (x > 0 || bar.scrollLeft) bar.scrollLeft = Math.max(0, x); }
 }
-const APP_VER = (() => { try { return new URL(location.href).searchParams.get('v') || '20261101-2'; } catch(e){ return '20261101-2'; } })();
+const APP_VER = (() => { try { return new URL(location.href).searchParams.get('v') || '20261101-3'; } catch(e){ return '20261101-3'; } })();
 // 새 버전이 올라오면 새로고침 없이 자동으로 바뀜 (캐시를 피해서 새 주소로 다시 열기, 고치는 중이면 끝날 때까지 기다림)
 async function checkVer(){ try { const r = await fetch('version.txt?'+Date.now(), {cache:'no-store'}); if (r.ok) { const v = (await r.text()).trim(); if (v && v !== APP_VER && !(typeof editingNow==='function' && editingNow())) { const u = new URL(location.href); u.searchParams.set('v', v); location.replace(u.toString()); } } } catch(e){} }
 setInterval(checkVer, 15000); document.addEventListener('visibilitychange', () => { if (!document.hidden) checkVer(); }); setTimeout(checkVer, 3000);
 const DEFAULT_AV = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="26" fill="#a9c9f5"/><circle cx="32" cy="25" r="10" fill="#e6f0fd"/><path d="M14 52c2-10 10-15 18-15s16 5 18 15z" fill="#e6f0fd"/></svg>');
 window.DEFAULT_AV = DEFAULT_AV;
+const KK_EMO = {'(사랑)':'😍','(부끄러움)':'😊','(화)':'😡','(원숭이)':'🙈','(비버)':'🦫','(울음)':'😭','(웃음)':'😄','(놀람)':'😲','(하트)':'💕','(잠)':'😴','(최고)':'👍'};
 function linkify(h){
+  // 카톡 글자 이모티콘 (사랑) 같은 건 그림으로
+  h = h.replace(/\([가-힣]{1,4}\)/g, t => KK_EMO[t] ? `<span class="kemo" title="${t}">${KK_EMO[t]}</span>` : t);
   // 대화 속 링크를 누를 수 있게 (새 창으로 열림)
   return h.replace(/https?:\/\/[^\s<>"']+/g, u => { const clean = u.replace(/&amp;/g,'&'); return `<a href="${u}" target="_blank" rel="noopener noreferrer" class="lnk">${u}</a>`; });
 }
