@@ -550,6 +550,7 @@ async function loadChats(force){
   state.etag = r.headers.get('ETag'); state.sha = j.sha;
   const data = JSON.parse(b64dec(j.content));
   state.chats = data.chats || [];
+  state.chats.forEach(c => { if (c.draft && (!c.draftMessages || !c.draftMessages.length)) { c.draftMessages = c.draft.split('\n').map(s => s.trim()).filter(Boolean); } });
   try { const t = JSON.stringify(state.chats); if (t.length < 2500000) ls.set('cci_cache', t); } catch(e){}
   state.loading = false;
   return true;
