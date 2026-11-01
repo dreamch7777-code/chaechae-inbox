@@ -549,7 +549,7 @@ async function loadChats(force){
   const j = await r.json();
   state.etag = r.headers.get('ETag'); state.sha = j.sha;
   const data = JSON.parse(b64dec(j.content));
-  state.chats = data.chats || [];
+  state.chats = (data.chats || []).filter(c => !String(c.id || '').startsWith('soop'));   // 숲 쪽지 카드는 카톡 답장함에 안 보임
   state.chats.forEach(c => { if (c.draft && (!c.draftMessages || !c.draftMessages.length)) { c.draftMessages = c.draft.split('\n').map(s => s.trim()).filter(Boolean); } });
   try { const t = JSON.stringify(state.chats); if (t.length < 2500000) ls.set('cci_cache', t); } catch(e){}
   state.loading = false;
@@ -934,7 +934,7 @@ function render(){
   <div class="bar"><button class="link" data-act="logout">토큰 다시 넣기</button></div></main>`;
   const ton = document.querySelector('.tab.on'); if (ton && ton.parentElement) { const bar = ton.parentElement; const x = ton.offsetLeft - (bar.clientWidth - ton.offsetWidth)/2; if (x > 0 || bar.scrollLeft) bar.scrollLeft = Math.max(0, x); }
 }
-const APP_VER = (() => { try { return new URL(location.href).searchParams.get('v') || '20261101-1'; } catch(e){ return '20261101-1'; } })();
+const APP_VER = (() => { try { return new URL(location.href).searchParams.get('v') || '20261101-2'; } catch(e){ return '20261101-2'; } })();
 // 새 버전이 올라오면 새로고침 없이 자동으로 바뀜 (캐시를 피해서 새 주소로 다시 열기, 고치는 중이면 끝날 때까지 기다림)
 async function checkVer(){ try { const r = await fetch('version.txt?'+Date.now(), {cache:'no-store'}); if (r.ok) { const v = (await r.text()).trim(); if (v && v !== APP_VER && !(typeof editingNow==='function' && editingNow())) { const u = new URL(location.href); u.searchParams.set('v', v); location.replace(u.toString()); } } } catch(e){} }
 setInterval(checkVer, 15000); document.addEventListener('visibilitychange', () => { if (!document.hidden) checkVer(); }); setTimeout(checkVer, 3000);
