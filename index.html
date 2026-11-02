@@ -865,6 +865,7 @@ function sendState(c){
   if (s) return s.state; // sending | sent | failed
   return 'queued';
 }
+function editKey(c){ const m=(c.messages||[]).slice(-1)[0]||{}; return (m.time||'')+'|'+(m.text||''); }   // 채채가 고친 초안이 어느 대화에 대한 건지 기억
 function meLast(c){ const m=(c.messages||[]).slice(-1)[0]; return !!m && m.sender==='me' && c.status!=='approved'; }
 function bucket(c){
   if (c.status === 'deleted') return null;
@@ -1405,7 +1406,7 @@ function flushSave(id){
   clearTimeout(saveTimers[id]); delete saveTimers[id];
   const lines = readLines(id); const c = state.chats.find(x=>x.id===id); if (!c) return writing;
   c.draftMessages = lines; c.toneBase = null;
-  writing = writing.then(() => commit(id, x => { x.draftMessages = lines; x.toneBase = null; if (x.status!=='approved') x.status='draft'; }, `고치기: ${c.name}`))
+  writing = writing.then(() => commit(id, x => { x.draftMessages = lines; x.toneBase = null; x.editedFor = editKey(x); if (x.status!=='approved') x.status='draft'; }, `고치기: ${c.name}`))
     .then(() => setInfo(id, `${lines.join('').length}자 · 저장됨`))
     .catch(e => { setInfo(id,'저장 실패 — 다시 고쳐 주세요'); console.error(e); })
     .finally(() => { if (state.renderPending && !editingNow()) render(); });
@@ -1567,7 +1568,7 @@ document.addEventListener('click', e => {
   } else if (act==='saveedit'){
     const lines = [...document.querySelectorAll(`textarea[data-ed="${CSS.escape(id)}"]`)].map(x=>x.value.trim()).filter(Boolean);
     delete state.editing[id];
-    mutate(id, x => { x.draftMessages = lines; if (x.status!=='approved') x.status='draft'; }, `고치기: ${c.name}`); toast('저장했어요');
+    mutate(id, x => { x.draftMessages = lines; x.editedFor = editKey(x); if (x.status!=='approved') x.status='draft'; }, `고치기: ${c.name}`); toast('저장했어요');
   }
 });
 // 말풍선에서 엔터 = 승인하고 바로 발송 (Shift+엔터는 줄바꿈)
