@@ -865,6 +865,7 @@ function sendState(c){
   if (s) return s.state; // sending | sent | failed
   return 'queued';
 }
+function meLast(c){ const m=(c.messages||[]).slice(-1)[0]; return !!m && m.sender==='me' && c.status!=='approved'; }
 function bucket(c){
   if (c.status === 'deleted') return null;
   if (c.muted) return null;                                  // '쌓인 업무'에서만 숨김 (전체에는 보이고, 읽기·갱신은 그대로)
@@ -872,6 +873,7 @@ function bucket(c){
   if (c.category === 'inquiry') return 'inquiry';          // 업체 예약·문의는 보냈거나 내가 답해도 항상 이 탭에
   if (c.status === 'approved') return (s === 'failed') ? 'reply' : 'sent';   // 승인하자마자 목록에서 빠지고 '발송' 탭으로 (못 보낸 것만 다시 답장 대기)
   if (c.status === 'skipped' || c.status === 'sent') return 'sent';
+  if (meLast(c)) return 'sent';                                // 채채가 이미 마지막으로 보낸 방은 답장 대기에 다시 올리지 않음
   if (c.category === 'plus' || /톡클라우드 복원 필요/.test(c.summary||'') || c.checkReason) return 'check';
   return 'reply';
 }
@@ -881,7 +883,7 @@ const TABS = [['all','전체'],['reply','답장 대기'],['star','⭐'],['check'
 state.q = ''; state.sel = ls.get('cci_sel') || null;
 function groupsNow(){
   const groups = { all:[], reply:[], star:[], check:[], inquiry:[], sent:[] };
-  for (const c of state.chats){ if (c.category!=='ad' && c.category!=='plus' && !(c.status==='approved' && sendState(c)!=='failed') && stLabel(c)!=='읽기만') groups.all.push(c); const b = bucket(c); if (b) { groups[b].push(c); if ((state.favs||[]).includes(c.name)) groups.star.push(c); } }
+  for (const c of state.chats){ if (c.category!=='ad' && c.category!=='plus' && !(c.status==='approved' && sendState(c)!=='failed') && stLabel(c)!=='읽기만' && !meLast(c)) groups.all.push(c); const b = bucket(c); if (b) { groups[b].push(c); if ((state.favs||[]).includes(c.name)) groups.star.push(c); } }
   const byTime = (a,b) => String(b.sortKey||b.updatedAt||'').localeCompare(String(a.sortKey||a.updatedAt||''));
   Object.values(groups).forEach(g => g.sort(byTime));
   return groups;
