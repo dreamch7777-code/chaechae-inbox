@@ -934,7 +934,7 @@ function render(){
   <div class="bar"><button class="link" data-act="logout">토큰 다시 넣기</button></div></main>`;
   const ton = document.querySelector('.tab.on'); if (ton && ton.parentElement) { const bar = ton.parentElement; const x = ton.offsetLeft - (bar.clientWidth - ton.offsetWidth)/2; if (x > 0 || bar.scrollLeft) bar.scrollLeft = Math.max(0, x); }
 }
-const APP_VER = (() => { try { return new URL(location.href).searchParams.get('v') || '20261102-6'; } catch(e){ return '20261102-6'; } })();
+const APP_VER = (() => { try { return new URL(location.href).searchParams.get('v') || '20261102-7'; } catch(e){ return '20261102-7'; } })();
 // 새 버전이 올라오면 새로고침 없이 자동으로 바뀜 (캐시를 피해서 새 주소로 다시 열기, 고치는 중이면 끝날 때까지 기다림)
 async function checkVer(){ try { const r = await fetch('version.txt?'+Date.now(), {cache:'no-store'}); if (r.ok) { const v = (await r.text()).trim(); if (v && v !== APP_VER && !(typeof editingNow==='function' && editingNow())) { const u = new URL(location.href); u.searchParams.set('v', v); location.replace(u.toString()); } } } catch(e){} }
 setInterval(checkVer, 15000); document.addEventListener('visibilitychange', () => { if (!document.hidden) checkVer(); }); setTimeout(checkVer, 3000);
@@ -1566,17 +1566,34 @@ document.addEventListener('click', e => {
     mutate(id, x => { x.draftMessages = lines; if (x.status!=='approved') x.status='draft'; }, `고치기: ${c.name}`); toast('저장했어요');
   }
 });
-// 말풍선에서 엔터 = 승인하고 바로 발송 (Shift+엔터는 줄바꿈, 한글 입력 중 엔터는 무시)
-document.addEventListener('keydown', e => {
-  const t = e.target;
-  if (e.key !== 'Enter' || e.shiftKey || e.isComposing || e.keyCode === 229) return;
-  if (!(t && t.classList && t.classList.contains('dedit') && t.dataset.ed)) return;
+// 말풍선에서 엔터 = 승인하고 바로 발송 (Shift+엔터는 줄바꿈)
+// 한글은 글자를 조합하는 중에 엔터가 오면 '조합 확정'이 먼저라서, 확정이 끝난 직후 바로 발송한다
+function enterSend(t){
   const btn = document.querySelector(`[data-act="approve"][data-id="${CSS.escape(t.dataset.ed)}"]`);
-  if (!btn) return;
-  e.preventDefault();
+  if (!btn) return false;
   t.blur();   // 글 쓰는 중이면 화면을 안 바꾸는 규칙 때문에 다음으로 안 넘어갔음
   btn.click();
-});
+  return true;
+}
+const isBubble = t => t && t.classList && t.classList.contains('dedit') && t.dataset && t.dataset.ed;
+document.addEventListener('keydown', e => {
+  const t = e.target;
+  if (e.key !== 'Enter' || e.shiftKey || !isBubble(t)) return;
+  if (e.isComposing || e.keyCode === 229) {
+    t._enterWait = true;
+    setTimeout(() => { if (t._enterWait) { t._enterWait = false; enterSend(t); } }, 150);   // compositionend 가 안 오는 브라우저 대비
+    return;
+  }   // 조합 확정 뒤 compositionend 에서 보냄
+  if (enterSend(t)) e.preventDefault();
+}, true);
+document.addEventListener('compositionend', e => {
+  const t = e.target;
+  if (!isBubble(t) || !t._enterWait) return;
+  t._enterWait = false;
+  setTimeout(() => enterSend(t), 0);
+}, true);
+// 엔터가 줄바꿈으로 들어가지 않게 (줄바꿈은 Shift+엔터)
+document.addEventListener('beforeinput', e => { if (e.inputType === 'insertParagraph' && isBubble(e.target)) e.preventDefault(); }, true);
 document.addEventListener('input', e => { const t=e.target; if (t.dataset && t.dataset.ed) scheduleSave(t.dataset.ed);
   if (t.id==='q'){ state.q = t.value; const g = groupsNow(); const gr=document.getElementById('grid'); if (gr) gr.innerHTML = gridHtml(g[state.tab]||[]); } });
 
