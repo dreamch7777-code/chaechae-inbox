@@ -838,9 +838,9 @@ async function loadAvatars(){
 
 // ---------- write (operation-based with retry) ----------
 let writing = Promise.resolve();
-function mutate(id, fn, msg){
+function mutate(id, fn, msg, noRender){
   // optimistic local update
-  const c = state.chats.find(x => x.id === id); if (c) fn(c); render();
+  const c = state.chats.find(x => x.id === id); if (c) fn(c); if (!noRender) render();
   writing = writing.then(() => commit(id, fn, msg)).catch(e => { console.error(e); loadChats(true).then(render); });
   return writing;
 }
@@ -934,7 +934,7 @@ function render(){
   <div class="bar"><button class="link" data-act="logout">토큰 다시 넣기</button></div></main>`;
   const ton = document.querySelector('.tab.on'); if (ton && ton.parentElement) { const bar = ton.parentElement; const x = ton.offsetLeft - (bar.clientWidth - ton.offsetWidth)/2; if (x > 0 || bar.scrollLeft) bar.scrollLeft = Math.max(0, x); }
 }
-const APP_VER = (() => { try { return new URL(location.href).searchParams.get('v') || '20261102-3'; } catch(e){ return '20261102-3'; } })();
+const APP_VER = (() => { try { return new URL(location.href).searchParams.get('v') || '20261102-4'; } catch(e){ return '20261102-4'; } })();
 // 새 버전이 올라오면 새로고침 없이 자동으로 바뀜 (캐시를 피해서 새 주소로 다시 열기, 고치는 중이면 끝날 때까지 기다림)
 async function checkVer(){ try { const r = await fetch('version.txt?'+Date.now(), {cache:'no-store'}); if (r.ok) { const v = (await r.text()).trim(); if (v && v !== APP_VER && !(typeof editingNow==='function' && editingNow())) { const u = new URL(location.href); u.searchParams.set('v', v); location.replace(u.toString()); } } } catch(e){} }
 setInterval(checkVer, 15000); document.addEventListener('visibilitychange', () => { if (!document.hidden) checkVer(); }); setTimeout(checkVer, 3000);
@@ -1082,21 +1082,29 @@ function goNext(id){
   for (let k = pos+1; k < all.length; k++){ if (list.find(c=>c.id===all[k])) { next = all[k]; break; } }
   if (!next && list.length) next = list[0].id;
   state.sel = next; ls.set('cci_sel', next||''); render();
-  const cd=document.querySelector('.card'); if (cd) cd.scrollIntoView({behavior:'smooth',block:'start'});
+  const cd=document.querySelector('.card'); if (cd) cd.scrollIntoView({block:'start'});
 }
 function whoAvatar(who){
   const A = state.avatars || {}; const w = String(who||'').trim(); if (!w) return DEFAULT_AV;
   const base = x => String(x).replace(/\s*\(.*$/, '').trim();
   let src = A[w];
   if (!src) { const k = Object.keys(A).find(k => base(k) === base(w) || k.startsWith(w) || (base(k).length > 1 && w.startsWith(base(k)))); if (k) src = A[k]; }
-  return src && /^data:image\/|^https:/.test(src) ? src : DEFAULT_AV;
+  return src && /^data:image\/|^https:/.test(src) ? avUrl(src) : DEFAULT_AV;
 }
 const splitT = t => { const m = String(t||'').match(/^(\d{1,2}\/\d{1,2})\s+(.*)$/); return m ? [m[1], m[2]] : ['', String(t||'')]; };
 function dayPill(d){ const [mo,da] = d.split('/').map(Number); const now = new Date(); let y = now.getFullYear(); if (mo > now.getMonth()+2) y--; const wd = '일월화수목금토'[new Date(y, mo-1, da).getDay()]; return `<div class="dpill"><span>${mo}월 ${da}일 ${wd}요일</span></div>`; }
-function avatarSrc(c){ const src = state.avatars[c.id] || state.avatars[c.name] || c.avatar; return src && /^data:image\/|^https:/.test(src) ? src : DEFAULT_AV; }
+// 프사(data: 주소)는 매번 다시 읽으면 느려서 한 번만 작은 주소(blob)로 바꿔 두고 씀
+const AVC = {};
+function avUrl(src){
+  if (!src || !/^data:image\//.test(src)) return src;
+  const k = src.length + ':' + src.slice(-40);
+  if (AVC[k]) return AVC[k];
+  try { const i = src.indexOf(','); const mime = (src.slice(5, i).split(';')[0]) || 'image/jpeg'; const bin = atob(src.slice(i+1)); const u = new Uint8Array(bin.length); for (let j=0;j<bin.length;j++) u[j] = bin.charCodeAt(j); return AVC[k] = URL.createObjectURL(new Blob([u], {type:mime})); } catch(e){ return src; }
+}
+function avatarSrc(c){ const src = state.avatars[c.id] || state.avatars[c.name] || c.avatar; return src && /^data:image\/|^https:/.test(src) ? avUrl(src) : DEFAULT_AV; }
 function avatar(c){
   const src = state.avatars[c.id] || state.avatars[c.name] || c.avatar;
-  return `<img onclick="" class="av" data-name="${esc(c.name)}" src="${esc(src && /^data:image\/|^https:/.test(src) ? src : DEFAULT_AV)}" alt="" onerror="this.onerror=null;this.src=DEFAULT_AV">`;
+  return `<img onclick="" class="av" data-name="${esc(c.name)}" src="${esc(src && /^data:image\/|^https:/.test(src) ? avUrl(src) : DEFAULT_AV)}" alt="" onerror="this.onerror=null;this.src=DEFAULT_AV">`;
 }
 function card(c){
   const s = sendState(c);
@@ -1471,7 +1479,7 @@ document.addEventListener('click', e => {
     const msgs = (c.draftMessages||[]).map(s=>s.trim()).filter(Boolean);
     if (hasBlank(msgs)){ toast('[ ] 빈칸을 먼저 채워 주세요'); return; }
     if (!msgs.length || hasBlank(msgs)) return;
-    mutate(id, x => { x.draftMessages = msgs; x.status='approved'; x.approval={ id: rid(), messages: msgs, at: new Date().toISOString() }; }, `승인: ${c.name}`);
+    mutate(id, x => { x.draftMessages = msgs; x.status='approved'; x.approval={ id: rid(), messages: msgs, at: new Date().toISOString() }; }, `승인: ${c.name}`, true);
     toast('승인했어요 — 바로 보내요 📤');
     if (c.event && c.event.at) { const ev = { ...c.event, note: [c.event.note, '답장 보내면서 자동 기록'].filter(Boolean).join(' · ') }; writing = writing.then(() => addEvent(ev)).then(ok => ok && mutate(id, x => { x.eventSaved = ev.id; }, `달력 기록: ${c.name}`)); }
     goNext(id);
