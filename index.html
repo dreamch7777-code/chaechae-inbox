@@ -85,9 +85,9 @@ details{margin-top:10px} summary{cursor:pointer;color:var(--sub);font-size:14px}
 .callb{display:flex!important;align-items:center;gap:10px;padding:9px 14px!important}.callic{width:34px;height:34px;border-radius:50%;background:#fff;color:#4a9d6f;display:flex;align-items:center;justify-content:center;flex:none}.callic.miss{color:#e5484d}.calltx{display:flex;flex-direction:column;line-height:1.25}.calltx b{font-size:15px}.calltx small{font-size:12px;opacity:.7}
 .b.media{background:transparent!important;box-shadow:none!important;border:0!important;padding:2px 0!important}
 .b.media.ph{padding:2px 0!important}
-.b.gnote{border:1px dashed var(--accent);background:var(--meSoft)!important}
-.gnote .gnh{font-weight:800;font-size:14px;margin-bottom:4px}
-.gnote .gnt{font-size:14px;line-height:1.45;white-space:pre-wrap}
+.gcard{background:#fff;border-radius:16px;overflow:hidden;width:min(78vw,290px);box-shadow:0 0 0 1px rgba(0,0,0,.06)}
+.gcard .gct{padding:16px 16px 14px;font-size:14.5px;line-height:1.5;color:#222;white-space:pre-wrap}
+.gcard .gcb{background:#fee500;color:#191919;text-align:center;font-weight:700;font-size:14.5px;padding:13px 0}
 .mimg{display:block;max-width:100%;border-radius:14px;background:#f6e9ef;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .av,.mav{cursor:pointer}
 .b.me .mimg{margin-left:auto}
@@ -1128,7 +1128,6 @@ function card(c){
   const blank = hasBlank(draft);
   const isGroup = c.category==='group';
   const GIFT_RE = /(선물을 보냈어요|배송지를 입력해주세요|선물 확인하기)/;   // 카톡 선물하기 알림(그림이 못 붙은 경우 글자만 오는 것)
-  let curGn = 1;   // 같은 선물 알림이 연달아 온 개수
   const bub0 = (m, bare) => {
     const links = (m.text||'').match(/https?:\/\/[^\s<>"']+/g) || [];
     const chips = links.map(u => { let d=''; try { d = new URL(u).hostname.replace(/^www\./,''); } catch(e){} return `<a class="lchip" href="${esc(u)}" target="_blank" rel="noopener noreferrer">🔗 ${esc(d||'링크')} 열기</a>`; }).join('');
@@ -1161,9 +1160,9 @@ function card(c){
       const w = Math.min(m.imgGift ? 340 : 240, Math.round((m.imgW||200)*0.9)), h = Math.round(w * (m.imgH||200) / (m.imgW||200));
       return `<div class="mline ${m.sender==='me'?'ml-me':'ml-them'}"><div class="b ${m.sender==='me'?'me':'them'} media">${who}<img onclick="" class="mimg${/\.png$/.test(m.img)?' tp':''}${one?' hdv':''}" data-mimg="${esc(m.img)}" data-hd="${esc((m.imgHd||[]).join('|'))}" ${u?`src="${u}"`:''} ${one?'':`width="${w}" height="${h}"`} style="${one?'':`width:${w}px;height:auto;aspect-ratio:${w}/${h}`}" alt="${esc(m.text||'사진')}"></div>${tm}</div>`;
     }
-    if (!m.img && GIFT_RE.test(m.text || '')) {
-      const sd = m.sender==='me'?'me':'them';
-      return `<div class="mline ${m.sender==='me'?'ml-me':'ml-them'}"><div class="b ${sd} gnote"><div class="gnh">🎁 카톡 선물${curGn>1?` <b>×${curGn}</b>`:''}</div><div class="gnt">${esc(m.text)}</div><small>선물 카드는 카톡에서 직접 열어 주세요</small></div>${tm}</div>`;
+    if (!m.img && GIFT_RE.test(m.text || '')) {   // 카톡 선물 카드처럼: 흰 카드 + 글 + 노란 버튼 (그림이 안 붙은 경우)
+      const btn = /배송지/.test(m.text) ? '배송지 입력하기' : '선물 확인하기';
+      return `<div class="mline ${m.sender==='me'?'ml-me':'ml-them'}"><div class="gcard"><div class="gct">${esc(m.text)}</div><div class="gcb">${btn}</div></div>${tm}</div>`;
     }
     let prev = '';
     if (m.preview) { const lk = (m.text||'').match(/https?:\/\/[^\s<>"']+/); if (!state.mediaUrl[m.preview]) setTimeout(() => loadMedia(m.preview), 0);
@@ -1174,9 +1173,6 @@ function card(c){
   const seq = (arr, base) => arr.map((m, j) => {
     const i = base + j, prev = allM[i-1];
     if (m.img && prev && prev.img && prev.sender === m.sender && (m.imgHd||[])[0] && (prev.imgHd||[])[0] === (m.imgHd||[])[0] && splitT(prev.time)[0] === splitT(m.time)[0]) return '';
-    const isG = !m.img && GIFT_RE.test(m.text || '');
-    if (isG && prev && !prev.img && prev.sender === m.sender && prev.text === m.text && splitT(prev.time)[0] === splitT(m.time)[0]) return '';   // 같은 선물 알림이 연달아 오면 한 번만 보이고 ×N 표시
-    curGn = 1; if (isG) for (let q = i + 1; q < allM.length && !allM[q].img && allM[q].sender === m.sender && allM[q].text === m.text && splitT(allM[q].time)[0] === splitT(m.time)[0]; q++) curGn++;
     const d = splitT(m.time)[0], pd = prev ? splitT(prev.time)[0] : '';
     const newDay = d && (d !== pd || j === 0);
     const pill = newDay ? dayPill(d) : '';
