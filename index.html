@@ -934,7 +934,7 @@ function render(){
   <div class="bar"><button class="link" data-act="logout">토큰 다시 넣기</button></div></main>`;
   const ton = document.querySelector('.tab.on'); if (ton && ton.parentElement) { const bar = ton.parentElement; const x = ton.offsetLeft - (bar.clientWidth - ton.offsetWidth)/2; if (x > 0 || bar.scrollLeft) bar.scrollLeft = Math.max(0, x); }
 }
-const APP_VER = (() => { try { return new URL(location.href).searchParams.get('v') || '20261102-5'; } catch(e){ return '20261102-5'; } })();
+const APP_VER = (() => { try { return new URL(location.href).searchParams.get('v') || '20261102-6'; } catch(e){ return '20261102-6'; } })();
 // 새 버전이 올라오면 새로고침 없이 자동으로 바뀜 (캐시를 피해서 새 주소로 다시 열기, 고치는 중이면 끝날 때까지 기다림)
 async function checkVer(){ try { const r = await fetch('version.txt?'+Date.now(), {cache:'no-store'}); if (r.ok) { const v = (await r.text()).trim(); if (v && v !== APP_VER && !(typeof editingNow==='function' && editingNow())) { const u = new URL(location.href); u.searchParams.set('v', v); location.replace(u.toString()); } } } catch(e){} }
 setInterval(checkVer, 15000); document.addEventListener('visibilitychange', () => { if (!document.hidden) checkVer(); }); setTimeout(checkVer, 3000);
@@ -1574,6 +1574,7 @@ document.addEventListener('keydown', e => {
   const btn = document.querySelector(`[data-act="approve"][data-id="${CSS.escape(t.dataset.ed)}"]`);
   if (!btn) return;
   e.preventDefault();
+  t.blur();   // 글 쓰는 중이면 화면을 안 바꾸는 규칙 때문에 다음으로 안 넘어갔음
   btn.click();
 });
 document.addEventListener('input', e => { const t=e.target; if (t.dataset && t.dataset.ed) scheduleSave(t.dataset.ed);
