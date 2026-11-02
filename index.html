@@ -886,6 +886,8 @@ function groupsNow(){
   for (const c of state.chats){ if (c.category!=='ad' && c.category!=='plus' && !(c.status==='approved' && sendState(c)!=='failed') && stLabel(c)!=='읽기만' && !meLast(c)) groups.all.push(c); const b = bucket(c); if (b) { groups[b].push(c); if ((state.favs||[]).includes(c.name)) groups.star.push(c); } }
   const byTime = (a,b) => String(b.sortKey||b.updatedAt||'').localeCompare(String(a.sortKey||a.updatedAt||''));
   Object.values(groups).forEach(g => g.sort(byTime));
+  const sentAt = c => { const ap=c.approval; const e=ap&&state.sent[ap.id]; return String((e&&e.at)||(ap&&ap.at)||c.sortKey||c.updatedAt||''); };
+  groups.sent.sort((x,y) => { const a=sentAt(x), b=sentAt(y); return new Date(b).getTime()-new Date(a).getTime() || b.localeCompare(a); });   // 발송 탭: 방금 보낸 게 맨 위, 오래된 건 아래
   return groups;
 }
 function stLabel(c){
