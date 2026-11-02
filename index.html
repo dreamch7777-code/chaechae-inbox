@@ -934,7 +934,7 @@ function render(){
   <div class="bar"><button class="link" data-act="logout">토큰 다시 넣기</button></div></main>`;
   const ton = document.querySelector('.tab.on'); if (ton && ton.parentElement) { const bar = ton.parentElement; const x = ton.offsetLeft - (bar.clientWidth - ton.offsetWidth)/2; if (x > 0 || bar.scrollLeft) bar.scrollLeft = Math.max(0, x); }
 }
-const APP_VER = (() => { try { return new URL(location.href).searchParams.get('v') || '20261102-8'; } catch(e){ return '20261102-8'; } })();
+const APP_VER = (() => { try { return new URL(location.href).searchParams.get('v') || '20261102-9'; } catch(e){ return '20261102-9'; } })();
 // 새 버전이 올라오면 새로고침 없이 자동으로 바뀜 (캐시를 피해서 새 주소로 다시 열기, 고치는 중이면 끝날 때까지 기다림)
 async function checkVer(){ try { const r = await fetch('version.txt?'+Date.now(), {cache:'no-store'}); if (r.ok) { const v = (await r.text()).trim(); if (v && v !== APP_VER && !(typeof editingNow==='function' && editingNow())) { const u = new URL(location.href); u.searchParams.set('v', v); location.replace(u.toString()); } } } catch(e){} }
 setInterval(checkVer, 15000); document.addEventListener('visibilitychange', () => { if (!document.hidden) checkVer(); }); setTimeout(checkVer, 3000);
@@ -1598,6 +1598,31 @@ document.addEventListener('keydown', e => {
   e.preventDefault();
   if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
   btn.click();
+}, true);
+// 말풍선에서 ↓ = 아래 말풍선으로, 맨 아래에서 또 ↓ = 새 말풍선 만들기 / ↑ = 위 말풍선으로
+function focusBubble(el, atEnd){
+  el.focus();
+  try { const r = document.createRange(); r.selectNodeContents(el); r.collapse(!atEnd); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); } catch(e){}
+}
+document.addEventListener('keydown', e => {
+  if ((e.key !== 'ArrowDown' && e.key !== 'ArrowUp') || e.shiftKey || e.isComposing || e.keyCode === 229) return;
+  const t = e.target; if (!isBubble(t)) return;
+  const sel = getSelection(); if (!sel.rangeCount) return;
+  const r = sel.getRangeAt(0).cloneRange();
+  const pre = r.cloneRange(); pre.selectNodeContents(t); pre.setEnd(r.endContainer, r.endOffset);
+  const post = r.cloneRange(); post.selectNodeContents(t); post.setStart(r.startContainer, r.startOffset);
+  const before = pre.toString(), after = post.toString();
+  const id = t.dataset.ed, list = bubblesOf(id), i = list.indexOf(t);
+  if (e.key === 'ArrowDown'){
+    if (after.includes('\n')) return;                       // 여러 줄 말풍선이면 줄 이동은 그대로
+    e.preventDefault();
+    if (i < list.length - 1) { focusBubble(list[i+1], false); return; }
+    if (!t.innerText.trim()) return;                          // 빈 말풍선 밑에는 새로 안 만듦
+    const add = document.querySelector(`[data-act="addline"][data-id="${CSS.escape(id)}"]`); if (add) add.click();
+  } else {
+    if (before.includes('\n')) return;
+    if (i > 0) { e.preventDefault(); focusBubble(list[i-1], true); }
+  }
 }, true);
 document.addEventListener('compositionend', e => {
   const t = e.target;
