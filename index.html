@@ -543,13 +543,16 @@ async function loadChats(force){
   const h = {}; if (state.etag && !force) h['If-None-Match'] = state.etag;
   const r = await api('chats.json', { headers: h });
   if (r.status === 304) return false;
-  if (r.status === 401 || r.status === 403) throw new Error('auth');
+  if (r.status === 401) throw new Error('auth');
+  if (r.status === 403 || r.status === 429) throw new Error('limit');   // 요청 한도: 토큰은 그대로 두고 잠시 뒤 다시
   if (r.status === 404) throw new Error('nofile');
   if (!r.ok) throw new Error('http'+r.status);
   const j = await r.json();
   state.etag = r.headers.get('ETag'); state.sha = j.sha;
   const data = JSON.parse(b64dec(j.content));
-  state.chats = (data.chats || []).filter(c => !String(c.id || '').startsWith('soop'));   // 숲 쪽지 카드는 카톡 답장함에 안 보임
+  const isSoop = c => String(c.id || '').startsWith('soop');
+  state.soop = (data.chats || []).filter(isSoop);   // 숲 쪽지 카드는 화면엔 안 보이지만 저장할 때 다시 합쳐서 지워지지 않게 함
+  state.chats = (data.chats || []).filter(c => !isSoop(c));
   state.chats.forEach(c => { if (c.draft && (!c.draftMessages || !c.draftMessages.length)) { c.draftMessages = c.draft.split('\n').map(s => s.trim()).filter(Boolean); } });
   try { const t = JSON.stringify(state.chats); if (t.length < 2500000) ls.set('cci_cache', t); } catch(e){}
   state.loading = false;
@@ -838,10 +841,11 @@ async function loadAvatars(){
 
 // ---------- write (operation-based with retry) ----------
 let writing = Promise.resolve();
+const allChats = () => state.chats.concat(state.soop || []);
 function mutate(id, fn, msg, noRender){
   // optimistic local update
   const c = state.chats.find(x => x.id === id); if (c) fn(c); if (!noRender) render();
-  writing = writing.then(() => commit(id, fn, msg)).catch(e => { console.error(e); loadChats(true).then(render); });
+  writing = writing.catch(() => {}).then(() => commit(id, fn, msg)).catch(e => { console.error(e); toast('저장이 안 됐어요. 다시 해 주세요'); loadChats(true).then(render); });
   return writing;
 }
 async function commit(id, fn, msg){
@@ -849,7 +853,7 @@ async function commit(id, fn, msg){
     await loadChats(true);
     const c = state.chats.find(x => x.id === id); if (!c) return;
     fn(c); c.updatedAt = new Date().toISOString();
-    const body = JSON.stringify({ updatedAt: new Date().toISOString(), chats: state.chats }, null, 1);
+    const body = JSON.stringify({ updatedAt: new Date().toISOString(), chats:allChats() }, null, 1);
     const r = await api('chats.json', { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ message: msg, content: b64enc(body), sha: state.sha }) });
     if (r.ok){ const j = await r.json(); state.sha = j.content.sha; state.etag = null; render(); return; }
     if (r.status !== 409 && r.status !== 422) throw new Error('put '+r.status);
@@ -926,7 +930,7 @@ function render(){
   const list = groups[state.tab] || [];
   updateBadge(groups);
   state._lastList = list;
-  if (list.length && !list.find(c => c.id===state.sel)) state.sel = list[0].id;
+  if (list.length && !list.find(c => c.id===state.sel)) { if (state.sel) state.noEnterUntil = Date.now() + 2500; state.sel = list[0].id; }   // 보던 카드가 빠져 다른 카드로 바뀌면 잠깐 Enter 발송을 막음
   const sel = list.find(c => c.id===state.sel);
   const keepQ = state.q;
   $('#app').innerHTML = `
@@ -1468,9 +1472,10 @@ document.addEventListener('click', e => {
   if (act==='evdel'){ if (t.dataset.sure) { t.disabled = true; t.textContent = '지우는 중…'; delEvent(t.dataset.ev); } else { t.dataset.sure = '1'; t.textContent = '정말 삭제?'; t.classList.add('sure'); setTimeout(() => { if (t.isConnected) { delete t.dataset.sure; t.textContent = '삭제'; t.classList.remove('sure'); } }, 4000); } return; }
   if (act==='logout'){ ls.del('cci_token'); token=''; render(); return; }
   if (act==='purge'){
-    const ids = state.chats.filter(x => bucket(x)==='sent').map(x=>x.id); if(!ids.length) return;
+    const ids = state.chats.filter(x => bucket(x)==='sent' && !['queued','sending'].includes(sendState(x))).map(x=>x.id); if(!ids.length) return;   // 아직 안 나간 승인 건은 정리하지 않음
+    if (!confirm(`발송된 ${ids.length}개를 정리할까요?`)) return;
     ids.forEach(i => { const cc = state.chats.find(x=>x.id===i); if (cc) cc.status='deleted'; }); render();
-    writing = writing.then(async () => { for (let k=0;k<5;k++){ await loadChats(true); state.chats.forEach(x => { if (ids.includes(x.id)) x.status='deleted'; }); const body = JSON.stringify({updatedAt:new Date().toISOString(),chats:state.chats},null,1); const r = await api('chats.json',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:'보낸 것 정리',content:b64enc(body),sha:state.sha})}); if(r.ok){state.etag=null;render();return;} await new Promise(r=>setTimeout(r,400)); } });
+    writing = writing.catch(() => {}).then(async () => { for (let k=0;k<5;k++){ await loadChats(true); state.chats.forEach(x => { if (ids.includes(x.id)) x.status='deleted'; }); const body = JSON.stringify({updatedAt:new Date().toISOString(),chats:allChats()},null,1); const r = await api('chats.json',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:'보낸 것 정리',content:b64enc(body),sha:state.sha})}); if(r.ok){state.etag=null;render();return;} await new Promise(r=>setTimeout(r,400)); } });
     toast('보낸 것을 정리했어요'); return;
   }
   if (!c) return;
@@ -1484,9 +1489,10 @@ document.addEventListener('click', e => {
     const msgs = (c.draftMessages||[]).map(s=>s.trim()).filter(Boolean);
     if (hasBlank(msgs)){ toast('[ ] 빈칸을 먼저 채워 주세요'); return; }
     if (!msgs.length || hasBlank(msgs)) return;
-    mutate(id, x => { x.draftMessages = msgs; x.status='approved'; x.approval={ id: rid(), messages: msgs, at: new Date().toISOString() }; }, `승인: ${c.name}`, true);
+    state.approveAt = Date.now();   // 연타·길게 누르기로 다음 카드까지 연달아 나가는 것 방지(1초)
+    mutate(id, x => { if (x.status==='approved' && x.approval) return; x.draftMessages = msgs; x.status='approved'; x.approval={ id: rid(), messages: msgs, at: new Date().toISOString() }; }, `승인: ${c.name}`, true);   // 다른 기기에서 이미 승인했으면 새 승인 번호를 만들지 않음
     toast('승인했어요 — 바로 보내요 📤');
-    if (c.event && c.event.at) { const ev = { ...c.event, note: [c.event.note, '답장 보내면서 자동 기록'].filter(Boolean).join(' · ') }; writing = writing.then(() => addEvent(ev)).then(ok => ok && mutate(id, x => { x.eventSaved = ev.id; }, `달력 기록: ${c.name}`)); }
+    if (c.event && c.event.at) { const ev = { ...c.event, note: [c.event.note, '답장 보내면서 자동 기록'].filter(Boolean).join(' · ') }; writing = writing.catch(() => {}).then(() => addEvent(ev)).then(ok => { if (ok) mutate(id, x => { x.eventSaved = ev.id; }, `달력 기록: ${c.name}`); }); }   // mutate 를 돌려주면 자기 자신을 기다려 저장이 멈춤
     goNext(id);
   } else if (act==='unapprove'){
     mutate(id, x => { x.status='draft'; x.approval=null; }, `승인 취소: ${c.name}`); toast('승인 취소했어요');
@@ -1573,7 +1579,10 @@ document.addEventListener('click', e => {
 });
 // 말풍선에서 엔터 = 승인하고 바로 발송 (Shift+엔터는 줄바꿈)
 // 한글은 글자를 조합하는 중에 엔터가 오면 '조합 확정'이 먼저라서, 확정이 끝난 직후 바로 발송한다
+const enterBlocked = () => Date.now() - (state.approveAt || 0) < 1000 || Date.now() < (state.noEnterUntil || 0);   // 방금 승인했거나 카드가 바뀐 직후엔 Enter 무시
+const isTouch = () => { try { return matchMedia('(pointer:coarse)').matches; } catch(e){ return false; } };   // 폰·태블릿에선 Enter = 줄바꿈
 function enterSend(t){
+  if (enterBlocked()) return true;
   const btn = document.querySelector(`[data-act="approve"][data-id="${CSS.escape(t.dataset.ed)}"]`);
   if (!btn) return false;
   t.blur();   // 글 쓰는 중이면 화면을 안 바꾸는 규칙 때문에 다음으로 안 넘어갔음
@@ -1584,6 +1593,8 @@ const isBubble = t => t && t.classList && t.classList.contains('dedit') && t.dat
 document.addEventListener('keydown', e => {
   const t = e.target;
   if (e.key !== 'Enter' || e.shiftKey || !isBubble(t)) return;
+  if (isTouch()) return;
+  if (e.repeat) { e.preventDefault(); return; }
   if (e.isComposing || e.keyCode === 229) {
     t._enterWait = true;
     setTimeout(() => { if (t._enterWait) { t._enterWait = false; enterSend(t); } }, 150);   // compositionend 가 안 오는 브라우저 대비
@@ -1596,6 +1607,9 @@ document.addEventListener('keydown', e => {
   if (e.key !== 'Enter' || e.shiftKey || e.ctrlKey || e.metaKey || e.altKey || e.isComposing || e.keyCode === 229) return;
   const t = e.target, tag = (t && t.tagName) || '';
   if (isBubble(t)) return;                                              // 말풍선 안은 위에서 처리
+  if (isTouch() || e.repeat || enterBlocked()) return;
+  if (tag === 'BUTTON' || tag === 'A') return;                          // 버튼·링크에 포커스가 있으면 그 버튼이 눌리게 둠
+  if (document.querySelector('#recvBox')) return;
   if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (t && t.isContentEditable)) return;   // 검색칸 등에서는 그대로
   if (document.querySelector('.lpage, .gclose, .lclose, #gift, .modal')) return;   // 사진·선물 창이 열려 있으면 건드리지 않음
   const btn = document.querySelector('.card [data-act="approve"]');
@@ -1636,7 +1650,7 @@ document.addEventListener('compositionend', e => {
   setTimeout(() => enterSend(t), 0);
 }, true);
 // 엔터가 줄바꿈으로 들어가지 않게 (줄바꿈은 Shift+엔터)
-document.addEventListener('beforeinput', e => { if (e.inputType === 'insertParagraph' && isBubble(e.target)) e.preventDefault(); }, true);
+document.addEventListener('beforeinput', e => { if (e.inputType === 'insertParagraph' && isBubble(e.target) && !isTouch()) e.preventDefault(); }, true);
 document.addEventListener('input', e => { const t=e.target; if (t.dataset && t.dataset.ed) scheduleSave(t.dataset.ed);
   if (t.id==='q'){ state.q = t.value; const g = groupsNow(); const gr=document.getElementById('grid'); if (gr) gr.innerHTML = gridHtml(g[state.tab]||[]); } });
 
@@ -1652,6 +1666,7 @@ async function tick(){
     state._wasErr = false;
   } catch(e){
     if (e.message==='auth'){ toast('토큰이 맞지 않아요'); ls.del('cci_token'); token=''; render(); return; }
+    if (e.message==='limit'){ toast('GitHub 요청이 잠깐 많아요. 1분 뒤 다시 해요'); state.live='err'; timer = setTimeout(tick, 60000); return; }
     state.live='err'; state._wasErr = true; render();
   }
   timer = setTimeout(tick, document.hidden ? 15000 : POLL_MS);
@@ -1687,7 +1702,7 @@ async function commitAll(fn, msg){
   for (let k=0;k<6;k++){
     await loadChats(true); await loadSent();
     const res = fn(state.chats);
-    const body = JSON.stringify({ updatedAt: new Date().toISOString(), chats: state.chats }, null, 1);
+    const body = JSON.stringify({ updatedAt: new Date().toISOString(), chats:allChats() }, null, 1);
     const r = await api('chats.json', { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ message: msg, content: b64enc(body), sha: state.sha }) });
     if (r.ok){ state.etag=null; render(); return res; }
     if (r.status!==409 && r.status!==422) throw new Error('put '+r.status);
@@ -1719,7 +1734,7 @@ window.addEventListener('message', async (ev) => {
     const have = new Set(state.chats.map(c => c.id));
     const add = (ev.data.chats||[]).filter(c => !have.has(c.id));
     state.chats = state.chats.concat(add);
-    const body = JSON.stringify({ updatedAt: new Date().toISOString(), chats: state.chats }, null, 1);
+    const body = JSON.stringify({ updatedAt: new Date().toISOString(), chats:allChats() }, null, 1);
     const put = async (path, text, msg) => {
       const g = await api(path); const sha = g.ok ? (await g.json()).sha : undefined;
       const r = await api(path, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ message: msg, content: b64enc(text), sha }) });
