@@ -559,6 +559,7 @@ async function loadChats(force){
   const isSoop = c => String(c.id || '').startsWith('soop');
   state.soop = (data.chats || []).filter(isSoop);   // 숲 쪽지 카드는 화면엔 안 보이지만 저장할 때 다시 합쳐서 지워지지 않게 함
   state.chats = (data.chats || []).filter(c => !isSoop(c));
+  state.chats.forEach(c => { const pd = pendingDraft[c.id]; if (pd) c.draftMessages = pd.slice(); });
   state.chats.forEach(c => { if (c.draft && (!c.draftMessages || !c.draftMessages.length)) { c.draftMessages = c.draft.split('\n').map(s => s.trim()).filter(Boolean); } });
   try { const t = JSON.stringify(state.chats); if (t.length < 2500000) ls.set('cci_cache', t); } catch(e){}
   state.loading = false;
@@ -1303,7 +1304,7 @@ function emoInner(id){
   <div class="egrid">${items.length?items.map(e=>`<button class="ei" data-act="emo" data-id="${esc(id)}" data-e="${esc(e)}">${esc(e)}</button>`).join(''):'<span class="st">아직 쓴 특수 임티가 없어요</span>'}</div>`;
 }
 // ---------- inline edit + autosave ----------
-const saveTimers = {}; const lastFocus = {};
+const saveTimers = {}; const lastFocus = {}; const pendingDraft = {};   // 저장 끝나기 전 고친 글: 새로고침이 와도 덮어쓰지 않음
 // 말풍선 꾹 누르기(0.6초) → 삭제 버튼
 let pressT = null, pressEl = null, pressXY = null;
 document.addEventListener('pointerdown', e => {
@@ -1414,6 +1415,7 @@ function readLines(id){ return bubblesOf(id).map(el => el.dataset.line ? el.data
 function setInfo(id, t){ state.saveInfo[id]=t; const el=document.querySelector(`[data-si="${CSS.escape(id)}"]`); if (el) el.textContent=t; }
 function scheduleSave(id){
   const n = readLines(id).join('').length; setInfo(id, `${n}자 · 저장 중…`);
+  pendingDraft[id] = readLines(id);
   clearTimeout(saveTimers[id]); saveTimers[id] = setTimeout(() => flushSave(id), 700);
 }
 function flushSave(id){
@@ -1424,7 +1426,7 @@ function flushSave(id){
   writing = writing.then(() => commit(id, x => { x.draftMessages = lines; x.toneBase = null; x.editedFor = editKey(x); if (x.status!=='approved') x.status='draft'; }, `고치기: ${c.name}`))
     .then(() => setInfo(id, `${lines.join('').length}자 · 저장됨`))
     .catch(e => { setInfo(id,'저장 실패 — 다시 고쳐 주세요'); console.error(e); })
-    .finally(() => { if (state.renderPending && !editingNow()) render(); });
+    .finally(() => { if (pendingDraft[id] && pendingDraft[id].join('\n') === lines.join('\n') && !(id in saveTimers)) delete pendingDraft[id]; if (state.renderPending && !editingNow()) render(); });
   return writing;
 }
 function insertEmo(id, text){
