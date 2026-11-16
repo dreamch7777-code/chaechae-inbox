@@ -951,7 +951,7 @@ function render(){
   <header><div class="top"><h1><svg class="hface" viewBox="0 0 48 48" aria-hidden="true"><path d="M24 5C12.4 5 4 12.3 4 21.5c0 5.6 3.2 10.5 8.1 13.5L10.5 43l9-5.3c1.4.2 2.9.3 4.5.3 11.6 0 20-7.3 20-16.5S35.6 5 24 5z" fill="#ffd3df"/><ellipse cx="16.5" cy="20.5" rx="2.6" ry="3.2" fill="#5a3444"/><ellipse cx="31.5" cy="20.5" rx="2.6" ry="3.2" fill="#5a3444"/><circle cx="17.4" cy="19.4" r=".9" fill="#fff"/><circle cx="32.4" cy="19.4" r=".9" fill="#fff"/><ellipse cx="12" cy="26.5" rx="3.4" ry="2.1" fill="#ff9fb8" opacity=".75"/><ellipse cx="36" cy="26.5" rx="3.4" ry="2.1" fill="#ff9fb8" opacity=".75"/><path d="M20.5 26.5q3.5 3.4 7 0" stroke="#5a3444" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M36.5 7.5l1.2 2.6 2.8.4-2 2 .5 2.8-2.5-1.3-2.5 1.3.5-2.8-2-2 2.8-.4z" fill="#fff4b0"/></svg>답장함</h1><button class="recvb" id="recvBtn" type="button">🎵 받은 파일</button><div class="live"><span class="dot ${state.live==='on'?'on':state.live==='err'?'err':''}"></span>${state.live==='on'?'실시간':state.live==='err'?'연결 확인 중':'연결 중'}</div></div>
   <div class="tabs">${TABS.map(([k,l]) => `<button class="tab ${state.tab===k?'on':''}" data-tab="${k}">${l}<b>${k==='cal' ? (state.events||[]).length : groups[k].length}</b></button>`).join('')}</div></header>
   <main>
-  <section class="skiplist auto-reply-settings" aria-label="자동 답장 설정"><div class="skrow"><span id="autoReplyState">${state.autoControl?(state.autoControl.autoReply?.enabled?'자동 답장 켜짐':'자동 답장 멈춤'):'자동 답장 상태 확인 중'}</span><button class="mini" data-auto-toggle type="button" ${state.autoControl?'':'disabled'}>${state.autoControl?.autoReply?.enabled?'멈춤':'켜기'}</button></div><small>맥락·말투 반영 · 애매한 내용은 확인 후 답장<br>켜면 1분 안에 확인 시작 · 멈추면 자동 발송 중단</small></section>
+  <section class="skiplist auto-reply-settings" aria-label="자동 답장 설정"><div class="skrow"><span id="autoReplyState">${state.autoControl?(state.autoControl.autoReply?.enabled?'자동 답장 켜짐':'자동 답장 멈춤'):'자동 답장 상태 확인 중'}</span><button class="mini" data-auto-toggle type="button" ${state.autoControl?'':'disabled'}>${state.autoControl?.autoReply?.enabled?'멈춤':'켜기'}</button></div><small>맥락·말투 반영 · 애매한 내용은 확인 후 답장<br><span id="autoReplyWorkerStatus">PC 연결 확인 중</span> · 단톡방은 초안만</small></section>
   <div class="subbar">${notifBtn()}${(state.tab==='reply'||state.tab==='all') && state.skip.filter(n=>n!=='채채BJ').length ? `<button class="link" data-act="skiplist">🚫 안 가져오는 사람 ${state.skip.filter(n=>n!=='채채BJ').length}명</button>`:''}${state.tab==='sent' && list.length ? `<button class="link" data-act="purge">발송 모두 정리</button>`:''}</div>${(state.tab==='reply'||state.tab==='all') && state.skipOpen ? `<div class="skiplist">${state.skip.filter(n=>n!=='채채BJ').map(n=>`<div class="skrow"><span>${esc(n)}</span><button class="mini" data-act="unskip" data-name="${esc(n)}">다시 가져오기</button></div>`).join('') || '<div class="ghint">없어요</div>'}</div>`:''}
   ${state.tab==='cal' ? calHtml() : `<div class="pickbox"><input id="q" class="search" type="search" placeholder="이름 검색" value="${esc(keepQ)}" autocomplete="off"><div class="grid" id="grid">${gridHtml(list)}</div></div>
   ${sel ? card(sel) : ''}`}
@@ -1770,6 +1770,17 @@ window.addEventListener('message', async (ev) => {
 });
 if (window.opener) { try { window.opener.postMessage({ type:'cci-ready' }, OLD_ORIGIN); } catch(e){} }
 if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(r => r.update()).catch(()=>{}); }
+async function loadReplyWorkerStatus(){
+  try{
+    const r=await api('worker-status.json',{headers:{Accept:'application/vnd.github.raw+json'}});
+    state.replyWorker=r.ok?JSON.parse(await r.text()):null;
+  }catch{state.replyWorker=null;}
+  const w=state.replyWorker,online=w&&Number.isFinite(Date.parse(w.at))&&Date.now()-Date.parse(w.at)<60000;
+  const labels={stopped:'PC 연결됨 · 멈춤',reading:'이전 대화 확인 중',writing:'답장 작성 중',reviewing:'발송 조건 확인 중',waiting:'새 카톡 대기 중',blocked:'PC 확인 필요',error:'PC 연결 확인 필요'};
+  const label=document.getElementById('autoReplyWorkerStatus');
+  if(label){label.textContent=online?(labels[w.state]||'PC 연결됨'):'PC 연결 안 됨';label.title=online?w.detail:'답장용 PC가 켜져 있어야 해요';}
+  return online;
+}
 async function loadAutoReplyControl(){
   if(!token)return;
   try {
@@ -1779,6 +1790,7 @@ async function loadAutoReplyControl(){
     state.autoControl=value;
     if(changed)render();
     const label=document.getElementById('autoReplyState');if(label)label.textContent=value.autoReply?.enabled?'자동 답장 켜짐':'자동 답장 멈춤';
+    await loadReplyWorkerStatus();
   }catch{const label=document.getElementById('autoReplyState');if(label)label.textContent='자동 답장 연결 확인 필요';}
 }
 document.addEventListener('click',async e=>{
@@ -1786,12 +1798,13 @@ document.addEventListener('click',async e=>{
   button.disabled=true;
   try{
     const enabled=!state.autoControl?.autoReply?.enabled;
+    if(enabled&&!await loadReplyWorkerStatus()){toast('답장용 PC 연결을 확인해 주세요');return;}
     for(let i=0;i<4;i++){
       const r=await api('control.json');if(!r.ok)throw Error('read');const entry=await r.json();const c=JSON.parse(b64dec(entry.content));
       if(!enabled)c.pause=true;
       c.autoReply={...c.autoReply,enabled,sessionId:crypto.randomUUID(),owner:'codex-context-v1',intervalMinutes:1,updatedAt:new Date().toISOString()};
       const save=await api('control.json',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({sha:entry.sha,message:enabled?'자동 답장 켜기':'자동 답장 멈춤',content:b64enc(JSON.stringify(c,null,1))})});
-      if(save.ok){state.autoControl=c;render();await loadAutoReplyControl();toast(enabled?'자동 답장 시작 · 1분 안에 확인해요':'자동 답장을 멈췄어요');return;}
+      if(save.ok){state.autoControl=c;render();await loadAutoReplyControl();toast(enabled?'자동 답장을 시작해요':'자동 답장을 멈췄어요');return;}
       if(save.status!==409&&save.status!==422)throw Error('save');
     }
     throw Error('conflict');
