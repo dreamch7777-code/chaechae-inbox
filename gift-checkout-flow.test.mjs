@@ -207,3 +207,151 @@ test('cap revision accepts paid replay only after rechecking full payment proof'
     }
   }
 });
+
+const paymentNow = 1900000000000;
+const quoteResponse = () => ({ ...ready(), challengeId: 'challenge-1', quoteFingerprint: 'quote-fingerprint-1', expiresAt: paymentNow + 120000, paymentMethod: { id: 'kakaopay', label: '카카오페이 · 기본 결제 수단', privatePaymentData: 'must-not-persist' } });
+test('fresh payment quote is bound to exact gift and does not initiate payment', async () => {
+  let stored = flow.bindReady(intent(), ready());
+  const calls = [];
+  const session = flow.createSession({ read: () => stored, write: p => { stored = p; }, now: () => paymentNow, ask: async (op,args) => { calls.push({op,args}); return quoteResponse(); } });
+  assert.equal(typeof session.paymentQuote, 'function');
+  await session.paymentQuote(card);
+  assert.deepEqual(calls, [{ op: 'checkout-payment-quote', args: { cardId: 'card-1', purchaseId: 'inbox-test-1', intentFingerprint: 'fingerprint-1' } }]);
+  assert.equal(stored.paymentAttemptId, undefined);
+  assert.deepEqual(flow.restore(flow.serialize(stored)).paymentQuote, { challengeId: 'challenge-1', quoteFingerprint: 'quote-fingerprint-1', expiresAt: 1900000120000, total: 10500, intentFingerprint: 'fingerprint-1', paymentMethodLabel: '카카오페이 · 기본 결제 수단' });
+  assert.equal(flow.serialize(stored).includes('must-not-persist'),false);
+});
+
+test('expired or changed quote cannot authorize payment', async () => {
+  for (const patch of [{ expiresAt: paymentNow }, { expiresAt: paymentNow + 120001 }, { expiresAt: '1900000120000' }, { total: 10400 }, { cardId: 'other' }, { intentFingerprint: 'other' }, { productId: '43' }, { quantity: 1 }, { optionLabels: ['other'] }, { challengeId: '' }, { quoteFingerprint: '' }, { paymentActionTaken: true }]) {
+    let stored = flow.bindReady(intent(), ready());
+    const session = flow.createSession({ read: () => stored, write: p => { stored = p; }, now: () => paymentNow, ask: async () => ({ ...quoteResponse(), ...patch }) });
+    assert.equal(typeof session.paymentQuote, 'function');
+    await assert.rejects(session.paymentQuote(card));
+    assert.equal(stored.paymentQuote, undefined);
+    assert.equal(stored.paymentAttemptId, undefined);
+  }
+});
+
+test('explicit payment call persists immutable attempt before transmission and sends direct UI approval', async () => {
+  let stored = flow.bindReady(intent(), ready());
+  const calls = [];
+  const session = flow.createSession({ read: () => stored, write: p => { stored = p; }, now: () => paymentNow, ask: async (op,args) => {
+    calls.push({op,args});
+    if (op==='checkout-payment-quote') return quoteResponse();
+    assert.equal(stored.paymentAttemptId, 'pay-test-1');
+    assert.equal(stored.paymentQuote.challengeId, 'challenge-1');
+    return { ...ready(), status: 'waiting', attemptId: 'pay-test-1', paymentState: 'waiting_for_user_auth', paymentActionTaken: true, finalPaymentByUser: false };
+  } });
+  assert.equal(typeof session.pay, 'function');
+  await assert.rejects(session.pay(card, 'pay-test-1'));
+  assert.equal(calls.length, 0);
+  await session.paymentQuote(card);
+  const result = await session.pay(card, 'pay-test-1');
+  assert.equal(result.status, 'waiting');
+  assert.deepEqual(calls[1], { op: 'checkout-pay', args: { cardId: 'card-1', purchaseId: 'inbox-test-1', intentFingerprint: 'fingerprint-1', total: 10500, attemptId: 'pay-test-1', approval: { challengeId: 'challenge-1', quoteFingerprint: 'quote-fingerprint-1', approvedAt: 1900000000000, expiresAt: 1900000120000, channel: 'direct-ui' } } });
+  await assert.rejects(session.pay(card, 'pay-test-2'));
+  assert.equal(calls.length, 2);
+});
+
+test('reload after lost payment response checks status only and preserves one payment attempt', async () => {
+  let stored = flow.bindReady(intent(), ready());
+  const calls = [];
+  let session = flow.createSession({ read: () => stored, write: p => { stored = p; }, now: () => paymentNow, ask: async (op,args) => { calls.push({op,args}); if(op==='checkout-payment-quote') return quoteResponse(); throw new Error('timeout'); } });
+  assert.equal(typeof session.pay, 'function');
+  await session.paymentQuote(card);
+  await assert.rejects(session.pay(card,'pay-test-1'), /timeout/);
+  stored = flow.restore(flow.serialize(stored));
+  assert.equal(stored.paymentAttemptId,'pay-test-1');
+  assert.equal(stored.paymentState,'payment_uncertain');
+  session = flow.createSession({ read: () => stored, write: p => { stored = p; }, now: () => paymentNow + 300000, ask: async (op,args) => { calls.push({op,args}); return { ...ready(), status:'waiting', attemptId:'pay-test-1', paymentState:'payment_uncertain', paymentActionTaken:true, finalPaymentByUser:false }; } });
+  await session.recover(card);
+  await assert.rejects(session.pay(card,'pay-test-2'));
+  await assert.rejects(session.paymentQuote(card));
+  assert.deepEqual(calls.map(x=>x.op), ['checkout-payment-quote','checkout-pay','checkout-status']);
+  assert.equal(calls[2].args.attemptId,'pay-test-1');
+});
+
+test('payment authorization expires before click and foreign cards cannot execute it', async () => {
+  let stored = flow.bindReady(intent(), ready()), now = paymentNow;
+  let calls = 0;
+  const session = flow.createSession({ read: () => stored, write: p => { stored = p; }, now: () => now, ask: async () => { calls++; return quoteResponse(); } });
+  assert.equal(typeof session.pay, 'function');
+  await session.paymentQuote(card);
+  await assert.rejects(session.pay({ ...card, id: 'other' }, 'pay-test-1'));
+  now += 120000;
+  await assert.rejects(session.pay(card,'pay-test-1'));
+  assert.equal(calls,1);
+  assert.equal(stored.paymentAttemptId,undefined);
+});
+
+test('assisted paid receipt needs bound stored attempt and verified codes', () => {
+  const pending = { ...flow.bindReady(intent(),ready()), paymentAttemptId:'pay-test-1', paymentState:'payment_uncertain' };
+  const paid = { ...ready(), status:'paid', attemptId:'pay-test-1', paymentActionTaken:true, finalPaymentByUser:false, paymentVerified:true, codes:[{code:'ONE'},{code:'TWO'}] };
+  assert.deepEqual(flow.paidDraft(pending,paid), ['커피 선물이야 !! 🎁','ONE','TWO']);
+  for (const patch of [{ attemptId:'pay-other' }, { attemptId:undefined }, { paymentVerified:false }, { total:10400 }, { codes:[] }]) assert.throws(()=>flow.paidDraft(pending,{...paid,...patch}));
+  assert.throws(()=>flow.paidDraft(flow.bindReady(intent(),ready()),paid));
+});
+
+test('changing pending amount or fingerprint invalidates already displayed payment quote', async () => {
+  for(const patch of [{total:10400},{intentFingerprint:'other'}]) {
+    let stored=flow.bindReady(intent(),ready()), calls=0;
+    const session=flow.createSession({read:()=>stored,write:p=>{stored=p;},now:()=>paymentNow,ask:async()=>{calls++;return quoteResponse();}});
+    await session.paymentQuote(card);
+    stored={...stored,...patch};
+    await assert.rejects(session.pay(card,'pay-test-1'));
+    assert.equal(calls,1);
+    assert.equal(stored.paymentAttemptId,undefined);
+  }
+});
+
+test('authoritative rejection before any payment attempt releases only the exact rejected approval', async () => {
+  let stored=flow.bindReady(intent(),ready());
+  const calls=[];
+  const session=flow.createSession({read:()=>stored,write:p=>{stored=p;},now:()=>paymentNow,ask:async(op,args)=>{calls.push({op,args});if(op==='checkout-payment-quote')return quoteResponse();return {ok:false,status:'hold',purchaseId:'inbox-test-1',intentFingerprint:'fingerprint-1',attemptId:'pay-test-1',paymentActionTaken:false,finalPaymentByUser:true,paymentAttempted:false,safeToRetryPayment:true,message:'승인 시간이 지났어요'};}});
+  await session.paymentQuote(card);
+  await assert.rejects(session.pay(card,'pay-test-1'),e=>e.safeToRetryPayment===true);
+  assert.equal(stored.paymentAttemptId,undefined);
+  assert.equal(stored.paymentQuote,undefined);
+  assert.equal(stored.status,'ready_for_user_payment');
+  assert.equal(stored.purchaseId,'inbox-test-1');
+  await session.paymentQuote(card);
+  assert.equal(calls.filter(x=>x.op==='checkout-pay').length,1);
+});
+
+test('uncertain or foreign rejection never resets a saved payment attempt', async () => {
+  for(const patch of [{purchaseId:'other'},{intentFingerprint:'other'},{attemptId:'pay-other'},{paymentActionTaken:true},{finalPaymentByUser:false},{paymentAttempted:true},{paymentAttempted:undefined},{safeToRetryPayment:false},{safeToRetryPayment:undefined},{ok:true},{status:'waiting'},{cardId:'other'}]) {
+    let stored=flow.bindReady(intent(),ready());
+    const session=flow.createSession({read:()=>stored,write:p=>{stored=p;},now:()=>paymentNow,ask:async op=>op==='checkout-payment-quote'?quoteResponse():({ok:false,status:'hold',purchaseId:'inbox-test-1',intentFingerprint:'fingerprint-1',attemptId:'pay-test-1',paymentActionTaken:false,finalPaymentByUser:true,paymentAttempted:false,safeToRetryPayment:true,...patch})});
+    await session.paymentQuote(card);
+    await assert.rejects(session.pay(card,'pay-test-1'));
+    assert.equal(stored.paymentAttemptId,'pay-test-1');
+    assert.equal(stored.paymentState,'payment_uncertain');
+    await assert.rejects(session.pay(card,'pay-test-2'));
+  }
+});
+
+test('unknown execution with no proven click retains attempt and never resubmits payment', async () => {
+  let stored=flow.bindReady(intent(),ready());
+  const calls=[];
+  const session=flow.createSession({read:()=>stored,write:p=>{stored=p;},now:()=>paymentNow,ask:async(op,args)=>{calls.push({op,args});return op==='checkout-payment-quote'?quoteResponse():({...ready(),status:'waiting',attemptId:'pay-test-1',paymentState:'payment_uncertain',paymentActionTaken:false,finalPaymentByUser:true});}});
+  await session.paymentQuote(card);
+  await session.pay(card,'pay-test-1');
+  assert.equal(stored.paymentAttemptId,'pay-test-1');
+  assert.equal(stored.paymentState,'payment_uncertain');
+  await session.recover(card);
+  await assert.rejects(session.pay(card,'pay-test-2'));
+  assert.deepEqual(calls.map(x=>x.op),['checkout-payment-quote','checkout-pay','checkout-status']);
+  assert.equal(stored.paymentAttemptId,'pay-test-1');
+});
+
+test('assisted latch before financial click accepts false flags only for owned attempt', () => {
+  const pending={...flow.bindReady(intent(),ready()),paymentAttemptId:'pay-test-1',paymentState:'payment_uncertain'};
+  const waiting={...ready(),status:'waiting',attemptId:'pay-test-1',paymentState:'waiting_for_user_auth',paymentActionTaken:false,finalPaymentByUser:false};
+  assert.equal(flow.verifyStatus(pending,waiting),'waiting');
+  assert.equal(flow.paidDraft(pending,waiting),null);
+  assert.throws(()=>flow.verifyStatus(pending,{...waiting,attemptId:'pay-other'}));
+  assert.throws(()=>flow.verifyStatus(pending,{...waiting,attemptId:undefined}));
+  assert.throws(()=>flow.verifyStatus(flow.bindReady(intent(),ready()),waiting));
+  assert.throws(()=>flow.verifyStatus(pending,{...waiting,paymentActionTaken:undefined}));
+});

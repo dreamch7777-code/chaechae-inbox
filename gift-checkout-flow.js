@@ -36,7 +36,10 @@
   }
   function verifyStatus(pending, response) {
     checkBinding(pending, response);
-    check(response.paymentActionTaken === false && response.finalPaymentByUser === true, '사용자가 직접 결제하는 주문인지 확인하지 못했어요.');
+    const manual = response.paymentActionTaken === false && response.finalPaymentByUser === true;
+    const assisted = /^pay-[a-zA-Z0-9-]+$/.test(pending.paymentAttemptId || '') && response.attemptId === pending.paymentAttemptId && typeof response.paymentActionTaken === 'boolean' && response.finalPaymentByUser === false;
+    check(manual || assisted, '이 주문에서 승인한 결제 요청인지 확인하지 못했어요.');
+    if (pending.paymentAttemptId && response.attemptId !== undefined) check(response.attemptId === pending.paymentAttemptId);
     check(['ready_for_user_payment', 'waiting', 'paid', 'failed', 'cancelled', 'not_paid', 'hold'].includes(response.status));
     return response.status;
   }
@@ -63,8 +66,10 @@
   function serialize(pending) {
     if (!pending) return 'null';
     validateIntent(pending);
-    const fields = ['cardId', 'recipientName', 'roomId', 'purchaseId', 'productId', 'productName', 'quantity', 'optionLabels', 'expectedTotal', 'spendingLimit', 'proposedSpendingLimit', 'intentFingerprint', 'total', 'status'];
-    return JSON.stringify(Object.fromEntries(fields.filter(k => pending[k] !== undefined).map(k => [k, pending[k]])));
+    const fields = ['cardId', 'recipientName', 'roomId', 'purchaseId', 'productId', 'productName', 'quantity', 'optionLabels', 'expectedTotal', 'spendingLimit', 'proposedSpendingLimit', 'intentFingerprint', 'total', 'status', 'paymentAttemptId', 'paymentApprovedAt', 'paymentState'];
+    const safe = Object.fromEntries(fields.filter(k => pending[k] !== undefined).map(k => [k, pending[k]]));
+    if (pending.paymentQuote) safe.paymentQuote = { challengeId: pending.paymentQuote.challengeId, quoteFingerprint: pending.paymentQuote.quoteFingerprint, expiresAt: pending.paymentQuote.expiresAt, total: pending.paymentQuote.total, intentFingerprint: pending.paymentQuote.intentFingerprint, paymentMethodLabel: pending.paymentQuote.paymentMethodLabel };
+    return JSON.stringify(safe);
   }
   function restore(raw) {
     try {
@@ -73,10 +78,13 @@
       check(['preparing', 'ready_for_user_payment', 'waiting', 'hold'].includes(pending.status));
       if (pending.status !== 'preparing') check(text(pending.intentFingerprint) && (amount(pending.total) ? pending.total <= pending.spendingLimit || pending.status === 'hold' : pending.total === null && ['waiting', 'hold'].includes(pending.status)) && text(pending.roomId));
       if (pending.proposedSpendingLimit !== undefined) check(pending.status === 'hold' && amount(pending.total) && amount(pending.proposedSpendingLimit) && pending.proposedSpendingLimit >= pending.total && pending.proposedSpendingLimit > pending.spendingLimit);
+      if (pending.paymentQuote) check(text(pending.paymentQuote.challengeId) && text(pending.paymentQuote.quoteFingerprint) && amount(pending.paymentQuote.expiresAt) && pending.paymentQuote.total === pending.total && pending.paymentQuote.intentFingerprint === pending.intentFingerprint);
+      if (pending.paymentAttemptId !== undefined) check(/^pay-[a-zA-Z0-9-]+$/.test(pending.paymentAttemptId) && pending.paymentQuote && amount(pending.paymentApprovedAt) && amount(pending.total) && pending.total <= pending.spendingLimit);
+      if (pending.paymentState !== undefined) check(['payment_in_progress', 'waiting_for_user_auth', 'payment_uncertain'].includes(pending.paymentState));
       return JSON.parse(serialize(pending));
     } catch (_) { return null; }
   }
-  function createSession({ read, write, ask }) {
+  function createSession({ read, write, ask, now = () => Date.now() }) {
     let running = false;
     const exclusive = async fn => {
       check(!running, 'busy: 주문 상태를 확인하고 있어요.');
@@ -105,6 +113,7 @@
       check(['ready_for_user_payment', 'paid'].includes(status) && response.total === pending.total);
       const bound = { ...pending, spendingLimit, intentFingerprint: response.intentFingerprint, status: status === 'paid' ? 'waiting' : status };
       delete bound.proposedSpendingLimit;
+      delete bound.paymentQuote;
       const draft = paidDraft(bound, response);
       write(bound);
       return { pending: bound, status, response, draft };
@@ -120,21 +129,58 @@
         check(belongsTo(pending, card), '이 받는 분의 주문이 아니에요. 먼저 준비한 주문의 답장 카드를 열어 주세요.');
         if (pending.proposedSpendingLimit !== undefined) return requestRevision(pending);
         if (!pending.intentFingerprint) return requestReady(pending);
-        const response = await ask('checkout-status', { purchaseId: pending.purchaseId, intentFingerprint: pending.intentFingerprint, cardId: pending.cardId });
+        const response = await ask('checkout-status', { purchaseId: pending.purchaseId, intentFingerprint: pending.intentFingerprint, cardId: pending.cardId, ...(pending.paymentAttemptId ? { attemptId: pending.paymentAttemptId } : {}) });
         const status = verifyStatus(pending, response);
         const draft = paidDraft(pending, response);
-        const bound = { ...pending, total: response.total };
+        const bound = { ...pending, total: response.total, ...(pending.paymentAttemptId && response.paymentState ? { paymentState: response.paymentState } : {}) };
         if (['ready_for_user_payment', 'waiting', 'hold'].includes(status)) write({ ...bound, status });
         return { pending: bound, status, response, draft };
       }),
       reviseLimit: (card, spendingLimit) => exclusive(async () => {
         const pending = read();
         check(belongsTo(pending, card), '이 상대의 주문이 아니에요.');
+        check(!pending.paymentAttemptId, '이미 결제를 요청한 주문이에요. 같은 주문의 상태만 확인해 주세요.');
         check(pending.status === 'hold' && amount(pending.total) && pending.total > pending.spendingLimit && text(pending.intentFingerprint) && pending.proposedSpendingLimit === undefined, '진행 중인 최대 금액 수정 결과를 먼저 확인해 주세요.');
         check(amount(spendingLimit) && spendingLimit >= pending.total, '최대 결제 금액을 주문서 최종 금액 이상인 원 단위 숫자로 적어 주세요.');
         const proposed = { ...pending, proposedSpendingLimit: spendingLimit };
         write(proposed);
         return requestRevision(proposed);
+      }),
+      paymentQuote: card => exclusive(async () => {
+        const pending = read();
+        check(belongsTo(pending, card), '이 상대의 주문이 아니에요.');
+        check(!pending.paymentAttemptId && !pending.proposedSpendingLimit && pending.status === 'ready_for_user_payment' && amount(pending.total) && pending.total <= pending.spendingLimit, '결제 내용이 확정된 주문만 결제를 요청할 수 있어요.');
+        const response = await ask('checkout-payment-quote', { cardId: pending.cardId, purchaseId: pending.purchaseId, intentFingerprint: pending.intentFingerprint });
+        check(verifyStatus(pending, response) === 'ready_for_user_payment' && response.paymentActionTaken === false && response.finalPaymentByUser === true);
+        check(text(response.challengeId) && text(response.quoteFingerprint) && amount(response.expiresAt) && response.expiresAt > now() && response.expiresAt <= now() + 120000, '결제 확인 시간이 지났거나 주문 정보가 달라졌어요. 금액을 다시 확인해 주세요.');
+        const paymentMethodLabel = response.paymentMethod && text(response.paymentMethod.label) ? response.paymentMethod.label.slice(0, 120) : '';
+        const bound = { ...pending, paymentQuote: { challengeId: response.challengeId, quoteFingerprint: response.quoteFingerprint, expiresAt: response.expiresAt, total: pending.total, intentFingerprint: pending.intentFingerprint, paymentMethodLabel } };
+        write(bound);
+        return { pending: bound, status: response.status, response };
+      }),
+      pay: (card, attemptId) => exclusive(async () => {
+        const pending = read();
+        check(belongsTo(pending, card), '이 상대의 주문이 아니에요.');
+        check(!pending.paymentAttemptId && !pending.proposedSpendingLimit && pending.status === 'ready_for_user_payment' && amount(pending.total) && pending.total <= pending.spendingLimit, '이미 결제를 요청했거나 결제할 수 없는 주문이에요. 같은 주문의 상태를 확인해 주세요.');
+        const quote = pending.paymentQuote, approvedAt = now();
+        check(quote && text(quote.challengeId) && text(quote.quoteFingerprint) && quote.total === pending.total && quote.intentFingerprint === pending.intentFingerprint && amount(quote.expiresAt) && quote.expiresAt > approvedAt && quote.expiresAt <= approvedAt + 120000, '결제 확인 시간이 지났거나 금액이 달라졌어요. 금액을 다시 확인해 주세요.');
+        check(/^pay-[a-zA-Z0-9-]+$/.test(attemptId), '결제 요청 번호를 확인하지 못했어요.');
+        const attempting = { ...pending, status: 'waiting', paymentAttemptId: attemptId, paymentApprovedAt: approvedAt, paymentState: 'payment_uncertain' };
+        write(attempting);
+        const response = await ask('checkout-pay', { cardId: pending.cardId, purchaseId: pending.purchaseId, intentFingerprint: pending.intentFingerprint, total: pending.total, attemptId, approval: { challengeId: quote.challengeId, quoteFingerprint: quote.quoteFingerprint, approvedAt, expiresAt: quote.expiresAt, channel: 'direct-ui' } });
+        if (response && response.ok === false && response.status === 'hold' && response.purchaseId === pending.purchaseId && response.intentFingerprint === pending.intentFingerprint && response.attemptId === attemptId && (response.cardId === undefined || response.cardId === pending.cardId) && response.paymentActionTaken === false && response.finalPaymentByUser === true && response.paymentAttempted === false && response.safeToRetryPayment === true) {
+          const rejected = { ...pending };
+          delete rejected.paymentQuote;
+          write(rejected);
+          const error = new Error(response.message || '결제 버튼을 누르기 전에 중단했어요. 금액을 다시 확인해 주세요.');
+          error.safeToRetryPayment = true;
+          throw error;
+        }
+        const status = verifyStatus(attempting, response);
+        const draft = paidDraft(attempting, response);
+        const bound = { ...attempting, paymentState: ['payment_in_progress', 'waiting_for_user_auth', 'payment_uncertain'].includes(response.paymentState) ? response.paymentState : 'payment_uncertain', status: ['ready_for_user_payment', 'waiting', 'hold'].includes(status) ? status : 'waiting' };
+        write(bound);
+        return { pending: bound, status, response, draft };
       })
     };
   }
