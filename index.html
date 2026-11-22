@@ -324,7 +324,17 @@ h1{font-size:30px}
 .mline{display:flex;align-items:flex-end;gap:5px;max-width:100%}
 .mline.ml-me{flex-direction:row-reverse;align-self:flex-end}
 .mline.ml-them{align-self:flex-start}
-.mline time{flex:none;font-size:10.5px;color:#7d8798;white-space:nowrap;padding-bottom:2px}
+.mline time{flex:none;font-size:12px;font-weight:700;color:#59677c;white-space:nowrap;padding-bottom:3px;font-variant-numeric:tabular-nums}
+.room-clock-note{font-size:12px;font-weight:700;color:#59677c;text-align:center;margin:0 0 8px}
+.photo-frame{display:inline-flex;position:relative;max-width:100%;min-width:120px;min-height:90px;align-items:center;justify-content:center;border-radius:14px;background:var(--bubble);overflow:hidden}
+.photo-state{padding:18px 12px;font-size:12px;line-height:1.5;color:var(--ink);text-align:center}
+.photo-frame img:not([src]){display:none}
+.photo-frame img[src]+.photo-state{display:none}
+.photo-frame.failed img{display:none}
+.photo-frame.failed .photo-state{display:block}
+.mgrid .photo-frame{min-width:0;min-height:110px;border-radius:0}
+.mgrid .photo-state{font-size:11px;padding:10px 6px}
+@media(max-width:480px){.mline .b{min-width:0;max-width:calc(100% - 72px)}.mline time{font-size:12px}.mline .mimg.hdv{max-width:100%}}
 .room .b{max-width:min(78vw,300px);padding:8px 12px;border-radius:16px;font-size:14.5px;line-height:1.45;color:var(--ink)}
 .room .them{background:var(--bubble);border-top-left-radius:16px}
 .room .me{background:var(--mine);border-top-right-radius:16px}
@@ -338,7 +348,7 @@ h1{font-size:30px}
 .b.media{padding:0!important}
 .mimg{border-radius:14px}
 .dpill{display:flex;justify-content:center;margin:10px 0 6px}
-.dpill span{font-size:11.5px;color:#fff;background:rgba(95,110,135,.35);border-radius:999px;padding:4px 12px}
+.dpill span{font-size:12.5px;font-weight:700;color:var(--ink);background:rgba(95,110,135,.14);border-radius:999px;padding:4px 12px}
 details.older{margin:0 0 4px}
 details.older>summary{list-style:none;display:flex;justify-content:center;font-size:12.5px;color:#5f6b7d}
 details.older>summary::-webkit-details-marker{display:none}
@@ -393,7 +403,7 @@ details.older .msgs{margin-top:0}
  .pick:hover{background:rgba(255,255,255,.04)} .pick.on{background:var(--meSoft)}
  .ps{background:rgba(255,255,255,.08);color:var(--sub)} .ps.wait{background:#5a3444;color:#ffc3d4}
  .summary{color:var(--sub)} .reason{background:#3d2f22;color:#f3c99c}
- .mline time,.gname,details.older>summary{color:#97a0b3} .dpill span{background:rgba(255,255,255,.12)}
+ .mline time,.room-clock-note,.gname,details.older>summary{color:#b7c1d3} .dpill span{background:rgba(255,255,255,.12)}
  .compose{background:#33262d;border-color:#4d3440} .compose:not(.on){background:#2a2d38;border-color:#3a3f4d}
  .compose.on .draft.dedit{background:#6a3a4c} .dedit:focus{background:#4a3340!important}
  .tonerow,.mini,.btn.del{background:var(--card);border-color:var(--line)} .mini{color:var(--text)}
@@ -1105,7 +1115,7 @@ function render(){
   <div class="bar"><button class="link" data-act="logout">토큰 다시 넣기</button></div></main>`;
   const ton = document.querySelector('.tab.on'); if (ton && ton.parentElement) { const bar = ton.parentElement; const x = ton.offsetLeft - (bar.clientWidth - ton.offsetWidth)/2; if (x > 0 || bar.scrollLeft) bar.scrollLeft = Math.max(0, x); }
 }
-const APP_VER = (() => { try { return new URL(location.href).searchParams.get('v') || '20261109-emo1'; } catch(e){ return '20261109-emo1'; } })();
+const APP_VER = (() => { try { return new URL(location.href).searchParams.get('v') || '20261122-media-time'; } catch(e){ return '20261122-media-time'; } })();
 // 새 버전이 올라오면 새로고침 없이 자동으로 바뀜 (캐시를 피해서 새 주소로 다시 열기, 고치는 중이면 끝날 때까지 기다림)
 async function checkVer(){ try { const r = await fetch('version.txt?'+Date.now(), {cache:'no-store'}); if (r.ok) { const v = (await r.text()).trim(); if (v && v !== APP_VER && !(typeof editingNow==='function' && editingNow())) { const u = new URL(location.href); u.searchParams.set('v', v); location.replace(u.toString()); } } } catch(e){} }
 setInterval(checkVer, 15000); document.addEventListener('visibilitychange', () => { if (!document.hidden) checkVer(); }); setTimeout(checkVer, 3000);
@@ -1195,25 +1205,65 @@ async function loadShot(c){
   } catch(e){ state.shotMiss[c.id] = true; }
   render();
 }
-state.mediaUrl = {}; const mediaBusy = {}; state.uploading = new Set(); state.upProg = {};
+state.mediaUrl = {}; const mediaBusy = {}, mediaFailed = {}; state.uploading = new Set(); state.upProg = {};
+function mediaImageError(el){
+  const preview = state.mediaUrl[el.dataset.mimg];
+  if (el.dataset.prefer && el.src === state.mediaUrl[el.dataset.prefer] && preview && el.src !== preview) {
+    delete state.mediaUrl[el.dataset.prefer]; mediaFailed[el.dataset.prefer] = Date.now(); el.src = preview; return;
+  }
+  el.closest('.photo-frame')?.classList.add('failed');
+  const label = el.closest('.photo-frame')?.querySelector('.photo-state'); if (label) label.textContent = '사진 파일을 표시할 수 없어요';
+}
+function refreshMedia(p){
+  document.querySelectorAll('img[data-mimg]').forEach(el => {
+    if (el.dataset.mimg !== p && el.dataset.prefer !== p) return;
+    const chosen = state.mediaUrl[el.dataset.prefer] || state.mediaUrl[el.dataset.mimg];
+    el.onerror = () => mediaImageError(el);
+    const frame = el.closest('.photo-frame');
+    if (chosen) { el.src = chosen; frame?.classList.remove('failed'); }
+    else if (mediaFailed[el.dataset.mimg] && (!el.dataset.prefer || mediaFailed[el.dataset.prefer])) {
+      frame?.classList.add('failed');
+      const label = frame?.querySelector('.photo-state'); if (label) label.textContent = '사진 파일이 아직 없거나 불러올 수 없어요';
+    }
+  });
+}
 async function loadMedia(p){
-  if (state.mediaUrl[p] || mediaBusy[p]) return; mediaBusy[p] = true;
-  try { const r = await api(p, { headers:{ 'Accept':'application/vnd.github.raw+json' } });
-    if (r.ok) { state.mediaUrl[p] = URL.createObjectURL(await r.blob());
-      document.querySelectorAll(`img[data-mimg="${CSS.escape(p)}"]`).forEach(el => el.src = state.mediaUrl[p]); }
-  } catch(e){} finally { mediaBusy[p] = false; }
+  if (!p || state.mediaUrl[p]) return state.mediaUrl[p];
+  if (mediaBusy[p]) return mediaBusy[p];
+  if (mediaFailed[p] && Date.now() - mediaFailed[p] < 30000) { refreshMedia(p); return; }
+  mediaBusy[p] = (async () => {
+    try { const r = await api(p, { headers:{ 'Accept':'application/vnd.github.raw+json' } });
+      if (!r.ok) throw new Error('media unavailable');
+      const blob = await r.blob();
+      if (!blob.size || /json|text\//i.test(blob.type)) throw new Error('not an image');
+      state.mediaUrl[p] = URL.createObjectURL(blob); delete mediaFailed[p];
+    } catch(e){ mediaFailed[p] = Date.now(); }
+    finally { delete mediaBusy[p]; refreshMedia(p); }
+    return state.mediaUrl[p];
+  })();
+  return mediaBusy[p];
 }
 async function blobOf(p){ await loadMedia(p); const u = state.mediaUrl[p]; return u ? await (await fetch(u)).blob() : null; }
 function openViewer(p, hd, all){
   const list = (all && all.length > 1) ? all : (hd.length ? hd : [p]);
-  const startAt = Math.max(0, list.indexOf(hd.length ? hd[0] : p));
+  const startAt = Math.max(0, list.indexOf(hd.includes(p) ? p : (hd[0] || p)));
   const box = document.createElement('div'); box.className = 'lbox';
   const many = list.length > 1;
-  box.innerHTML = `<button class="lx lclose" aria-label="닫기">✕</button>${many?`<div class="lcount"><b>1</b> / ${list.length}</div>`:''}<div class="lscroll lpager">${list.map(q => `<div class="lpage"><img alt="사진" data-q="${esc(q)}"></div>`).join('')}</div>${many?`<div class="ldots">${list.map((_,i)=>`<i class="${i?'':'on'}"></i>`).join('')}</div>`:''}<div class="lbar"><button class="lsave">⬇︎ 이 사진 저장</button>${many?`<button class="lsaveall">${list.length}장 모두</button>`:''}</div><div class="lhint">${hd.length ? '원본 화질' : '작은 사진이에요 · 원본은 다음 회차에 받아와요'}${many?' · 옆으로 밀어서 다음 사진':''}</div>`;
+  box.innerHTML = `<button class="lx lclose" aria-label="닫기">✕</button>${many?`<div class="lcount"><b>1</b> / ${list.length}</div>`:''}<div class="lscroll lpager">${list.map(q => `<div class="lpage"><img alt="사진" data-q="${esc(q)}"></div>`).join('')}</div>${many?`<div class="ldots">${list.map((_,i)=>`<i class="${i?'':'on'}"></i>`).join('')}</div>`:''}<div class="lbar"><button class="lsave">⬇︎ 이 사진 저장</button>${many?`<button class="lsaveall">${list.length}장 모두</button>`:''}</div><div class="lhint">${hd.length ? '원본 화질' : '작은 미리보기 사진이에요'}${many?' · 옆으로 밀어서 다음 사진':''}</div>`;
   document.body.appendChild(box); document.body.style.overflow = 'hidden';
   const pager = box.querySelector('.lpager'); const imgs = [...box.querySelectorAll('img')];
   if (hd.length && state.mediaUrl[p] && imgs[startAt]) imgs[startAt].src = state.mediaUrl[p];          // 원본 받는 동안 작은 사진 먼저
-  list.forEach((q, i) => loadMedia(q).then(() => { if (state.mediaUrl[q]) imgs[i].src = state.mediaUrl[q]; }));
+  const fallbacks = {};
+  document.querySelectorAll('img.mimg[data-prefer]').forEach(im => { if (im.dataset.prefer) fallbacks[im.dataset.prefer] = im.dataset.mimg; });
+  const hint = box.querySelector('.lhint');
+  list.forEach(async (q, i) => {
+    await loadMedia(q);
+    if (!state.mediaUrl[q] && fallbacks[q]) await loadMedia(fallbacks[q]);
+    const source = state.mediaUrl[q] || state.mediaUrl[fallbacks[q]];
+    if (source) imgs[i].src = source;
+    else { const label = document.createElement('span'); label.className = 'photo-state'; label.textContent = '사진 파일이 아직 없거나 불러올 수 없어요'; imgs[i].after(label); }
+    if (!state.mediaUrl[q] && hint) hint.textContent = '원본을 불러올 수 없어요 · 있는 사진은 미리보기로 표시해요';
+  });
   let cur = startAt;
   if (startAt) { box.querySelector('.lcount b') && (box.querySelector('.lcount b').textContent = startAt + 1); box.querySelectorAll('.ldots i').forEach((d, k) => d.classList.toggle('on', k === startAt)); requestAnimationFrame(() => { pager.style.scrollBehavior = 'auto'; pager.scrollLeft = startAt * pager.clientWidth; pager.style.scrollBehavior = ''; }); }
   if (many) { const pv = document.createElement('button'), nx = document.createElement('button'); pv.className = 'lnav lprev'; nx.className = 'lnav lnext'; pv.textContent = '‹'; nx.textContent = '›'; pv.setAttribute('aria-label','이전 사진'); nx.setAttribute('aria-label','다음 사진'); pv.onclick = e => { e.stopPropagation(); go(-1); }; nx.onclick = e => { e.stopPropagation(); go(1); }; box.appendChild(pv); box.appendChild(nx); }
@@ -1226,7 +1276,7 @@ function openViewer(p, hd, all){
   box.addEventListener('click', e => { if (e.target === box || e.target.classList.contains('lpage') || e.target.closest('.lclose')) close(); });
   const save = async qs => {
     const files = [];
-    for (const q of qs) { const bl = await blobOf(q); if (bl) files.push(new File([bl], 'kakao-' + q.split('/').pop().replace(/\.(jpg|png)$/, '') + (bl.type.includes('png') ? '.png' : '.jpg'), { type: bl.type || 'image/jpeg' })); }
+    for (const q of qs) { const bl = await blobOf(q) || (fallbacks[q] ? await blobOf(fallbacks[q]) : null); if (bl) files.push(new File([bl], 'kakao-' + q.split('/').pop().replace(/\.(jpg|png)$/, '') + (bl.type.includes('png') ? '.png' : '.jpg'), { type: bl.type || 'image/jpeg' })); }
     if (!files.length) return;
     try { if (navigator.canShare && navigator.canShare({ files })) { await navigator.share({ files }); return; } } catch(err){ if (err && err.name === 'AbortError') return; }
     for (const f of files) { const a = document.createElement('a'); a.href = URL.createObjectURL(f); a.download = f.name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500); }
@@ -1262,8 +1312,30 @@ function whoAvatar(who){
   if (!src) { const k = Object.keys(A).find(k => base(k) === base(w) || k.startsWith(w) || (base(k).length > 1 && w.startsWith(base(k)))); if (k) src = A[k]; }
   return src && /^data:image\/|^https:/.test(src) ? avUrl(src) : DEFAULT_AV;
 }
-const splitT = t => { const m = String(t||'').match(/^(\d{1,2}\/\d{1,2})\s+(.*)$/); return m ? [m[1], m[2]] : ['', String(t||'')]; };
-function dayPill(d){ const [mo,da] = d.split('/').map(Number); const now = new Date(); let y = now.getFullYear(); if (mo > now.getMonth()+2) y--; const wd = '일월화수목금토'[new Date(y, mo-1, da).getDay()]; return `<div class="dpill"><span>${mo}월 ${da}일 ${wd}요일</span></div>`; }
+const splitT = t => {
+  const raw = String(t || '').trim();
+  const clock = value => { const m = value.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/); if (!m || +m[1] > 23 || +m[2] > 59) return value; const h = +m[1]; return `${h < 12 ? '오전' : '오후'} ${h % 12 || 12}:${m[2]}`; };
+  if (/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}/.test(raw)) {
+    // DB timestamps are Korean wall time when no offset is supplied.
+    const iso = raw.replace(' ', 'T') + (/(Z|[+-]\d{2}:?\d{2})$/i.test(raw) ? '' : '+09:00');
+    const d = new Date(iso);
+    if (!Number.isNaN(d.getTime())) {
+      const parts = Object.fromEntries(new Intl.DateTimeFormat('en-CA', {timeZone:'Asia/Seoul',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(d).map(p => [p.type,p.value]));
+      return [`${parts.year}-${parts.month}-${parts.day}`, clock(`${parts.hour}:${parts.minute}`)];
+    }
+  }
+  const full = raw.match(/^(\d{4})[.\/-]\s*(\d{1,2})[.\/-]\s*(\d{1,2})\.?\s+(.*)$/);
+  if (full) return [`${full[1]}-${full[2].padStart(2,'0')}-${full[3].padStart(2,'0')}`, clock(full[4])];
+  const m = raw.match(/^(\d{1,2}\/\d{1,2})\s+(.*)$/);
+  return m ? [m[1], clock(m[2])] : ['', clock(raw)];
+};
+const messageTime = m => splitT(m.dbTimestamp || m.time);
+function dayPill(d){
+  const full = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d);
+  if (full) { const [,y,mo,da] = full; const wd = '일월화수목금토'[new Date(Date.UTC(+y,+mo-1,+da)).getUTCDay()]; return `<div class="dpill"><span>${+y}년 ${+mo}월 ${+da}일 ${wd}요일</span></div>`; }
+  const legacy = /^(\d{1,2})\/(\d{1,2})$/.exec(d);
+  return legacy ? `<div class="dpill"><span>${+legacy[1]}월 ${+legacy[2]}일</span></div>` : '';
+}
 // 프사(data: 주소)는 매번 다시 읽으면 느려서 한 번만 작은 주소(blob)로 바꿔 두고 씀
 const AVC = {};
 function avUrl(src){
@@ -1288,7 +1360,8 @@ function card(c){
     const links = (m.text||'').match(/https?:\/\/[^\s<>"']+/g) || [];
     const chips = links.map(u => { let d=''; try { d = new URL(u).hostname.replace(/^www\./,''); } catch(e){} return `<a class="lchip" href="${esc(u)}" target="_blank" rel="noopener noreferrer">🔗 ${esc(d||'링크')} 열기</a>`; }).join('');
     const who = '';
-    const tm = bare || !m.time ? '' : `<time>${esc(splitT(m.time)[1])}</time>`;
+    const [date, time] = messageTime(m);
+    const tm = bare || !time ? '' : `<time title="${esc((date ? date + ' ' : '') + time + ' · 한국 시간 (KST)')}">${esc(time)}</time>`;
     const callM = String(m.text||'').trim().match(/^(보이스톡|페이스톡)\s*(해요|취소|부재중|거절|\d+:\d+(?::\d+)?)$/);
     if (callM && !m.img) { const kind = callM[1], st = callM[2]; const miss = st==='부재중'||st==='거절'; const dur = /\d/.test(st);
       const title = dur ? `통화 ${st}` : st==='해요' ? `${kind} 해요` : st==='취소' ? '취소한 통화' : st==='거절' ? '거절한 통화' : '부재중 통화';
@@ -1305,16 +1378,16 @@ function card(c){
       return `<div class="mline ${m.sender==='me'?'ml-me':'ml-them'}"><div class="b ${m.sender==='me'?'me':'them'} audb"><div class="audt">${isA?'🎵':'📎'} ${esc(nm)}</div>${isA?`<audio controls preload="none" data-aud="${esc(p)}"></audio>`:''}<a class="auddl" data-dl="${esc(p)}" data-dlname="${esc(nm)}" href="#">⬇ 내려받기</a></div>${tm}</div>`;
     }
     if (m.img && (m.imgHd||[]).length >= 2 && /^사진 \d+장$/.test((m.text||'').trim())) {
-      const hds = m.imgHd.slice(0, 9); hds.forEach(q => { if (!state.mediaUrl[q]) setTimeout(() => loadMedia(q), 0); });
-      return `<div class="mline ${m.sender==='me'?'ml-me':'ml-them'}"><div class="b ${m.sender==='me'?'me':'them'} media"><div class="mgrid g${Math.min(hds.length,4)}">${hds.map(q => `<img onclick="" class="mimg mg" data-mimg="${esc(q)}" data-hd="${esc(m.imgHd.join('|'))}" ${state.mediaUrl[q]?`src="${state.mediaUrl[q]}"`:''} alt="사진">`).join('')}</div></div>${tm}</div>`;
+      const hds = m.imgHd.slice(0, 9); hds.forEach(q => { setTimeout(() => state.mediaUrl[q] ? refreshMedia(q) : loadMedia(q), 0); });
+      return `<div class="mline ${m.sender==='me'?'ml-me':'ml-them'}"><div class="b ${m.sender==='me'?'me':'them'} media"><div class="mgrid g${Math.min(hds.length,4)}">${hds.map(q => `<span class="photo-frame${mediaFailed[q] && !state.mediaUrl[q] ? ' failed' : ''}"><img onclick="" class="mimg mg" data-mimg="${esc(q)}" data-hd="${esc(m.imgHd.join('|'))}" ${state.mediaUrl[q]?`src="${state.mediaUrl[q]}"`:''} alt="사진"><span class="photo-state" role="status">${mediaFailed[q] ? '사진 파일이 아직 없거나 불러올 수 없어요' : '사진 불러오는 중…'}</span></span>`).join('')}</div></div>${tm}</div>`;
     }
     if (m.img) {
       const one = (m.imgHd||[]).length === 1 && /^사진$/.test((m.text||'').trim()) ? m.imgHd[0] : null;
       const src0 = one && state.mediaUrl[one] ? one : m.img;
-      const u = state.mediaUrl[src0]; if (!one && !state.mediaUrl[m.img]) setTimeout(() => loadMedia(m.img), 0);
-      if (one && !state.mediaUrl[one]) setTimeout(() => loadMedia(one).then(() => document.querySelectorAll(`img[data-mimg="${CSS.escape(m.img)}"]`).forEach(el => { if (state.mediaUrl[one]) el.src = state.mediaUrl[one]; })), 0);
+      const u = state.mediaUrl[src0]; if (u) setTimeout(() => refreshMedia(m.img), 0); if (!state.mediaUrl[m.img]) setTimeout(() => loadMedia(m.img), 0);
+      if (one && !state.mediaUrl[one]) setTimeout(() => loadMedia(one), 0);
       const w = Math.min(m.imgGift ? 340 : 240, Math.round((m.imgW||200)*0.9)), h = Math.round(w * (m.imgH||200) / (m.imgW||200));
-      return `<div class="mline ${m.sender==='me'?'ml-me':'ml-them'}"><div class="b ${m.sender==='me'?'me':'them'} media">${who}<img onclick="" class="mimg${/\.png$/.test(m.img)?' tp':''}${one?' hdv':''}" data-mimg="${esc(m.img)}" data-hd="${esc((m.imgHd||[]).join('|'))}" ${u?`src="${u}"`:''} ${one?'':`width="${w}" height="${h}"`} style="${one?'':`width:${w}px;height:auto;aspect-ratio:${w}/${h}`}" alt="${esc(m.text||'사진')}"></div>${tm}</div>`;
+      return `<div class="mline ${m.sender==='me'?'ml-me':'ml-them'}"><div class="b ${m.sender==='me'?'me':'them'} media">${who}<span class="photo-frame${mediaFailed[m.img] && (!one || mediaFailed[one]) && !u ? ' failed' : ''}"><img onclick="" class="mimg${/\.png$/.test(m.img)?' tp':''}${one?' hdv':''}" data-mimg="${esc(m.img)}" data-prefer="${esc(one||'')}" data-hd="${esc((m.imgHd||[]).join('|'))}" ${u?`src="${u}"`:''} ${one?'':`width="${w}" height="${h}"`} style="${one?'':`width:${w}px;height:auto;aspect-ratio:${w}/${h}`}" alt="${esc(m.text||'사진')}"><span class="photo-state" role="status">${mediaFailed[m.img] && (!one || mediaFailed[one]) ? '사진 파일이 아직 없거나 불러올 수 없어요' : '사진 불러오는 중…'}</span></span></div>${tm}</div>`;
     }
     if (!m.img && GIFT_RE.test(m.text || '')) {   // 카톡 선물 카드처럼: 흰 카드 + 글 + 노란 버튼 (그림이 안 붙은 경우)
       const btn = /배송지/.test(m.text) ? '배송지 입력하기' : '선물 확인하기';
@@ -1328,8 +1401,8 @@ function card(c){
   const allM = (c.messages||[]); const recent = allM.slice(-6), older = allM.slice(-20, -6);
   const seq = (arr, base) => arr.map((m, j) => {
     const i = base + j, prev = allM[i-1];
-    if (m.img && prev && prev.img && prev.sender === m.sender && (m.imgHd||[])[0] && (prev.imgHd||[])[0] === (m.imgHd||[])[0] && splitT(prev.time)[0] === splitT(m.time)[0]) return '';
-    const d = splitT(m.time)[0], pd = prev ? splitT(prev.time)[0] : '';
+    if (m.img && prev && prev.img && prev.sender === m.sender && (m.imgHd||[])[0] && (prev.imgHd||[])[0] === (m.imgHd||[])[0] && messageTime(prev)[0] === messageTime(m)[0]) return '';
+    const d = messageTime(m)[0], pd = prev ? messageTime(prev)[0] : '';
     const newDay = d && (d !== pd || j === 0);
     const pill = newDay ? dayPill(d) : '';
     const h = bub0(m);
@@ -1363,12 +1436,12 @@ function card(c){
   else if (done) btns = `<div class="btns" style="grid-template-columns:2fr 1fr"><button class="btn pri" data-act="rewrite" data-id="${esc(c.id)}">✏️ 답장 새로 쓰기</button><button class="btn del" data-act="delete" data-id="${esc(c.id)}">이번만 제외</button></div>`;
   else btns = `<div class="btns" style="grid-template-columns:2fr 1fr"><button class="btn pri" data-act="approve" data-id="${esc(c.id)}">승인하고 발송</button><button class="btn del" data-act="delete" data-id="${esc(c.id)}">이번만 제외</button></div>${blank?'<div class="hint">[ ] 빈칸을 채워야 승인할 수 있어요 (말풍선을 눌러서 고치세요)</div>':'<div class="hint">엔터를 누르면 바로 승인·발송돼요 (줄바꿈은 Shift+엔터)</div>'}`;
   return `<div class="card">
-    <div class="head">${avatar(c)}<div><div class="name">${esc(c.name)}${isGroup?' <span class="gbadge">단톡</span>':''} <button class="favb ${(state.favs||[]).includes(c.name)?'on':''}" data-act="fav" data-id="${esc(c.id)}" aria-label="즐찾">${(state.favs||[]).includes(c.name)?'★':'☆'}</button></div><div class="time">${esc(c.displayTime||'')}</div></div></div>
+    <div class="head">${avatar(c)}<div><div class="name">${esc(c.name)}${isGroup?' <span class="gbadge">단톡</span>':''} <button class="favb ${(state.favs||[]).includes(c.name)?'on':''}" data-act="fav" data-id="${esc(c.id)}" aria-label="즐찾">${(state.favs||[]).includes(c.name)?'★':'☆'}</button></div><div class="time">${esc((c.messages||[]).length ? '최근 대화 · ' + fmt(((c.messages||[]).at(-1).dbTimestamp || (c.messages||[]).at(-1).time)) : (c.displayTime||''))}</div></div></div>
     ${state.shotOpen[c.id]?`<div class="shot" data-shot="${esc(c.id)}">${state.shotUrl[c.id]?`<img src="${state.shotUrl[c.id]}" alt="카톡 화면">`:(state.shotMiss[c.id]?'<div class="st">아직 찍은 화면이 없어요 (다음 회차에 찍혀요)</div>':'<div class="st">불러오는 중…</div>')}</div>`:''}
     ${reason?`<div class="reason">${esc(reason)}</div>`:''}
     ${c.summary && !reason?`<div class="summary"><span class="sic" aria-hidden="true">💬</span><span>${esc(c.summary)}</span></div>`:''}
     ${c.event && c.event.at ? `<div class="evnote">📅 ${c.eventSaved ? '달력에 넣었어요' : '보내면 달력에 바로 넣어요'}: <b>${esc(evWhen(c.event))} ${esc(c.event.title||'약속')}</b></div>` : ''}
-    ${msgs?`<div class="room"><div class="msgs">${msgs}</div></div>`:''}
+    ${msgs?`<div class="room"><div class="room-clock-note">한국 시간 · KST</div><div class="msgs">${msgs}</div></div>`:''}
     ${(draftHtml)?`<div class="compose${editable?' on':''}"><div class="clbl">${c.status==='approved'?'승인한 답장':'보낼 답장'}</div>${draftHtml}</div>`:''}
     ${status}${btns}<button class="never" data-act="never" data-id="${esc(c.id)}">🚫 다음부터 이 사람 안 가져오기</button></div>`;
 }
@@ -1610,7 +1683,7 @@ function notifBtn(){
   if (typeof Notification==='undefined' || Notification.permission!=='default') return '';
   return `<button class="notif" data-act="notif">🔔 알림·배지 켜기</button>`;
 }
-function fmt(iso){ if(!iso) return ''; const d=new Date(iso); return `${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`; }
+function fmt(iso){ if(!iso) return ''; const [date,time] = splitT(iso); return `${date ? date + ' ' : ''}${time} · KST`; }
 function renderSetup(){
   $('#app').innerHTML = `<div class="setup"><h1>카톡 답장함</h1>
   <p style="color:var(--sub);line-height:1.6">처음 한 번만 GitHub 토큰을 넣어주세요. 이 기기에만 저장돼요.</p>
