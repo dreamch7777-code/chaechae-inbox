@@ -334,6 +334,9 @@ h1{font-size:30px}
 .photo-frame.failed .photo-state{display:block}
 .mgrid .photo-frame{min-width:0;min-height:110px;border-radius:0}
 .mgrid .photo-state{font-size:11px;padding:10px 6px}
+.group-preview{max-width:240px;margin-top:7px}
+.group-preview[hidden]{display:none}
+.group-preview>small{display:block;font-size:12px;font-weight:700;line-height:1.5;margin-bottom:4px;color:var(--ink)}
 @media(max-width:480px){.mline .b{min-width:0;max-width:calc(100% - 72px)}.mline time{font-size:12px}.mline .mimg.hdv{max-width:100%}}
 .room .b{max-width:min(78vw,300px);padding:8px 12px;border-radius:16px;font-size:14.5px;line-height:1.45;color:var(--ink)}
 .room .them{background:var(--bubble);border-top-left-radius:16px}
@@ -1205,7 +1208,7 @@ async function loadShot(c){
   } catch(e){ state.shotMiss[c.id] = true; }
   render();
 }
-state.mediaUrl = {}; const mediaBusy = {}, mediaFailed = {}; state.uploading = new Set(); state.upProg = {};
+state.mediaUrl = {}; state.mediaGroups = {}; const mediaBusy = {}, mediaFailed = {}; state.uploading = new Set(); state.upProg = {};
 function mediaImageError(el){
   const preview = state.mediaUrl[el.dataset.mimg];
   if (el.dataset.prefer && el.src === state.mediaUrl[el.dataset.prefer] && preview && el.src !== preview) {
@@ -1226,6 +1229,19 @@ function refreshMedia(p){
       const label = frame?.querySelector('.photo-state'); if (label) label.textContent = '사진 파일이 아직 없거나 불러올 수 없어요';
     }
   });
+  document.querySelectorAll('[data-group-preview]').forEach(panel => {
+    const preview = panel.dataset.groupPreview, originals = state.mediaGroups[preview] || [];
+    panel.hidden = !state.mediaUrl[preview] || !originals.some(q => mediaFailed[q] && !state.mediaUrl[q]);
+  });
+}
+function viewerPaths(paths){
+  const result = [];
+  paths.forEach(p => {
+    const composite = Object.keys(state.mediaGroups).find(q => state.mediaGroups[q].includes(p) && mediaFailed[p] && !state.mediaUrl[p] && state.mediaUrl[q]);
+    const source = composite || p;
+    if (!result.includes(source)) result.push(source);
+  });
+  return result;
 }
 async function loadMedia(p){
   if (!p || state.mediaUrl[p]) return state.mediaUrl[p];
@@ -1245,11 +1261,12 @@ async function loadMedia(p){
 }
 async function blobOf(p){ await loadMedia(p); const u = state.mediaUrl[p]; return u ? await (await fetch(u)).blob() : null; }
 function openViewer(p, hd, all){
-  const list = (all && all.length > 1) ? all : (hd.length ? hd : [p]);
-  const startAt = Math.max(0, list.indexOf(hd.includes(p) ? p : (hd[0] || p)));
+  const list = viewerPaths((all && all.length > 1) ? all : (hd.length ? hd : [p]));
+  const selected = viewerPaths([hd.includes(p) ? p : (hd[0] || p)])[0];
+  const startAt = Math.max(0, list.indexOf(selected));
   const box = document.createElement('div'); box.className = 'lbox';
   const many = list.length > 1;
-  box.innerHTML = `<button class="lx lclose" aria-label="닫기">✕</button>${many?`<div class="lcount"><b>1</b> / ${list.length}</div>`:''}<div class="lscroll lpager">${list.map(q => `<div class="lpage"><img alt="사진" data-q="${esc(q)}"></div>`).join('')}</div>${many?`<div class="ldots">${list.map((_,i)=>`<i class="${i?'':'on'}"></i>`).join('')}</div>`:''}<div class="lbar"><button class="lsave">⬇︎ 이 사진 저장</button>${many?`<button class="lsaveall">${list.length}장 모두</button>`:''}</div><div class="lhint">${hd.length ? '원본 화질' : '작은 미리보기 사진이에요'}${many?' · 옆으로 밀어서 다음 사진':''}</div>`;
+  box.innerHTML = `<button class="lx lclose" aria-label="닫기">✕</button>${many?`<div class="lcount"><b>1</b> / ${list.length}</div>`:''}<div class="lscroll lpager">${list.map(q => `<div class="lpage"><img alt="사진" data-q="${esc(q)}"></div>`).join('')}</div>${many?`<div class="ldots">${list.map((_,i)=>`<i class="${i?'':'on'}"></i>`).join('')}</div>`:''}<div class="lbar"><button class="lsave">⬇︎ 이 사진 저장</button>${many?`<button class="lsaveall">${list.length}장 모두</button>`:''}</div><div class="lhint">${list.some(q => state.mediaGroups[q]) ? '묶음 미리보기 포함 · 각 사진의 원본은 아니에요' : (hd.length ? '원본 화질' : '작은 미리보기 사진이에요')}${many?' · 옆으로 밀어서 다음 사진':''}</div>`;
   document.body.appendChild(box); document.body.style.overflow = 'hidden';
   const pager = box.querySelector('.lpager'); const imgs = [...box.querySelectorAll('img')];
   if (hd.length && state.mediaUrl[p] && imgs[startAt]) imgs[startAt].src = state.mediaUrl[p];          // 원본 받는 동안 작은 사진 먼저
@@ -1294,7 +1311,7 @@ function openUrlViewer(u, name){
   box.addEventListener('click', e => { if (e.target === box || e.target.classList.contains('lscroll') || e.target.closest('.lclose')) close(); });
 }
 document.addEventListener('click', e => { const a = e.target.closest && e.target.closest('img.av, img.mav'); if (a && a.src && !a.src.includes('svg')) { e.preventDefault(); e.stopPropagation(); openUrlViewer(a.src, a.dataset.name); } }, true);
-document.addEventListener('click', e => { const im = e.target.closest && e.target.closest('img.mimg'); if (im) { e.preventDefault(); e.stopPropagation(); const all = []; (im.closest('.card') || document).querySelectorAll('img.mimg').forEach(x => { const h = (x.dataset.hd || '').split('|').filter(Boolean); (h.length ? h : [x.dataset.mimg]).forEach(q => { if (q && !all.includes(q)) all.push(q); }); }); openViewer(im.dataset.mimg, (im.dataset.hd || '').split('|').filter(Boolean), all); } }, true);
+document.addEventListener('click', e => { const im = e.target.closest && e.target.closest('img.mimg'); if (im) { e.preventDefault(); e.stopPropagation(); const all = []; (im.closest('.card') || document).querySelectorAll('img.mimg').forEach(x => { if (x.closest('[data-group-preview]')?.hidden) return; const h = (x.dataset.hd || '').split('|').filter(Boolean); (h.length ? h : [x.dataset.mimg]).forEach(q => { if (q && !all.includes(q)) all.push(q); }); }); openViewer(im.dataset.mimg, (im.dataset.hd || '').split('|').filter(Boolean), all); } }, true);
 function goNext(id){
   // 승인·제외하면 바로 다음 사람으로 넘어가기
   const list = (groupsNow()[state.tab]||[]).filter(c => c.id !== id);
@@ -1378,8 +1395,8 @@ function card(c){
       return `<div class="mline ${m.sender==='me'?'ml-me':'ml-them'}"><div class="b ${m.sender==='me'?'me':'them'} audb"><div class="audt">${isA?'🎵':'📎'} ${esc(nm)}</div>${isA?`<audio controls preload="none" data-aud="${esc(p)}"></audio>`:''}<a class="auddl" data-dl="${esc(p)}" data-dlname="${esc(nm)}" href="#">⬇ 내려받기</a></div>${tm}</div>`;
     }
     if (m.img && (m.imgHd||[]).length >= 2 && /^사진 \d+장$/.test((m.text||'').trim())) {
-      const hds = m.imgHd.slice(0, 9); hds.forEach(q => { setTimeout(() => state.mediaUrl[q] ? refreshMedia(q) : loadMedia(q), 0); });
-      return `<div class="mline ${m.sender==='me'?'ml-me':'ml-them'}"><div class="b ${m.sender==='me'?'me':'them'} media"><div class="mgrid g${Math.min(hds.length,4)}">${hds.map(q => `<span class="photo-frame${mediaFailed[q] && !state.mediaUrl[q] ? ' failed' : ''}"><img onclick="" class="mimg mg" data-mimg="${esc(q)}" data-hd="${esc(m.imgHd.join('|'))}" ${state.mediaUrl[q]?`src="${state.mediaUrl[q]}"`:''} alt="사진"><span class="photo-state" role="status">${mediaFailed[q] ? '사진 파일이 아직 없거나 불러올 수 없어요' : '사진 불러오는 중…'}</span></span>`).join('')}</div></div>${tm}</div>`;
+      const hds = m.imgHd.slice(0, 9); state.mediaGroups[m.img] = m.imgHd; setTimeout(() => state.mediaUrl[m.img] ? refreshMedia(m.img) : loadMedia(m.img), 0); hds.forEach(q => { setTimeout(() => state.mediaUrl[q] ? refreshMedia(q) : loadMedia(q), 0); });
+      return `<div class="mline ${m.sender==='me'?'ml-me':'ml-them'}"><div class="b ${m.sender==='me'?'me':'them'} media"><div class="mgrid g${Math.min(hds.length,4)}">${hds.map(q => `<span class="photo-frame${mediaFailed[q] && !state.mediaUrl[q] ? ' failed' : ''}"><img onclick="" class="mimg mg" data-mimg="${esc(q)}" data-hd="${esc(m.imgHd.join('|'))}" ${state.mediaUrl[q]?`src="${state.mediaUrl[q]}"`:''} alt="사진"><span class="photo-state" role="status">${mediaFailed[q] ? '사진 파일이 아직 없거나 불러올 수 없어요' : '사진 불러오는 중…'}</span></span>`).join('')}</div><div class="group-preview" data-group-preview="${esc(m.img)}"${state.mediaUrl[m.img] && m.imgHd.some(q => mediaFailed[q] && !state.mediaUrl[q]) ? '' : ' hidden'}><small>묶음 미리보기 · 원본 일부 없음</small><span class="photo-frame"><img onclick="" class="mimg" data-mimg="${esc(m.img)}" ${state.mediaUrl[m.img]?`src="${state.mediaUrl[m.img]}"`:''} alt="사진 묶음 미리보기"><span class="photo-state">묶음 미리보기 불러오는 중…</span></span></div></div>${tm}</div>`;
     }
     if (m.img) {
       const one = (m.imgHd||[]).length === 1 && /^사진$/.test((m.text||'').trim()) ? m.imgHd[0] : null;

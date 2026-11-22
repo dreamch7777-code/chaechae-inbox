@@ -72,3 +72,21 @@ test('DB timestamp takes precedence over a yearless UI timestamp', () => {
   assert.deepEqual(Array.from(vm.runInContext('messageTime(m)', ctx)), ['2026-11-22','오전 1:05']);
   assert.deepEqual(Array.from(vm.runInContext("splitT('2026-11-22T00:05:00')", ctx)), ['2026-11-22','오전 12:05']);
 });
+test('a missing-original photo group offers its available composite preview once', async () => {
+  const scheduled = [];
+  const ctx = mediaContext(async p => p.includes('hd') ? new Response('', {status:404}) : new Response(new Blob(['image'], {type:'image/jpeg'})));
+  Object.assign(ctx, { setTimeout: fn => { scheduled.push(fn); }, sendState: () => '', hasBlank: () => false, avatar: () => '', avatarSrc: () => '', whoAvatar: () => '', linkify: x => x, draftLinesHtml: () => '', IC: {}, fmt: x => x });
+  vm.runInContext(section('const splitT =', '// 프사(data:'), ctx);
+  vm.runInContext(section('function card(c)', '// 보낼 답장:'), ctx);
+  ctx.c = {id:'synthetic', name:'테스트', status:'skipped', messages:[{sender:'me', text:'사진 2장', time:'11/22 09:05', img:'media/composite.jpg', imgHd:['media/hd1.jpg','media/hd2.jpg']} ]};
+  vm.runInContext('card(c)', ctx);
+  await Promise.all(scheduled.map(fn => fn()));
+  assert.match(ctx.state.mediaUrl['media/composite.jpg'] || '', /^blob:/);
+  const rendered = vm.runInContext('card(c)', ctx);
+  assert.equal((rendered.match(/data-group-preview=/g) || []).length, 1);
+  assert.match(rendered, /묶음 미리보기/);
+  assert.doesNotMatch(rendered, /data-group-preview="media\/composite.jpg" hidden/);
+  assert.deepEqual(Array.from(vm.runInContext("viewerPaths(['media/hd1.jpg','media/hd2.jpg','media/composite.jpg'])",ctx)), ['media/composite.jpg']);
+  ctx.state.mediaUrl['media/hd1.jpg']='blob:valid-original';
+  assert.deepEqual(Array.from(vm.runInContext("viewerPaths(['media/hd1.jpg','media/hd2.jpg','media/composite.jpg'])",ctx)), ['media/hd1.jpg','media/composite.jpg']);
+});
